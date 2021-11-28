@@ -44,6 +44,32 @@ struct camera {
     hmm_vec3 dir;
 };
 
+char vs[0x1000];
+char fs[0x1000];
+char *load_shader(const char *fn, char *dst)
+{
+    FILE *f = fopen(fn, "r");
+    if (!f) {
+        fatalerror("cannot open %s shader\n", fn);
+        return 0;
+    }
+
+    int size;
+    fseek(f, 0, SEEK_END);
+    size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (size >= 0x1000) {
+        fatalerror("shader %s larger than expected %x > %x\n", fn, size, 0x1000);
+        return 0;
+    }
+    
+    fread(dst, 1, size, f);
+    dst[size] = 0;
+    
+    return dst;
+}
+
 struct camera cam = {
     .yaw = 0,
     .pitch = 0,
@@ -276,28 +302,8 @@ int main(int argc, char **argv)
                 [2] = {.name="projection", .type = SG_UNIFORMTYPE_MAT4},
             },
         },
-        .vs.source =
-            "#version 330\n"
-            "layout(location = 0) in vec3 position;\n"
-            "layout(location = 1) in vec2 texcoord0;\n"
-            "out vec2 uv;\n"
-            "uniform mat4 model;\n"
-            "uniform mat4 view;\n"
-            "uniform mat4 projection;\n"
-            "void main() {\n"
-            "   gl_Position = projection * view * model * vec4(position, 1.0);\n"
-            "   uv = texcoord0;\n"
-            "}\n"
-        ,
-        .fs.source = 
-            "#version 330\n"
-            "uniform sampler2D tex;\n"
-            "in vec2 uv;\n"
-            "out vec4 frag_color;\n"
-            "void main() {\n"
-            "   frag_color = texture(tex, uv);\n"
-            "}\n"
-        ,
+        .vs.source = load_shader("vs.glsl", vs),
+        .fs.source = load_shader("fs.glsl", fs),
     });
 
     printf("shd = %p\n", &shd);
