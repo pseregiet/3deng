@@ -26,12 +26,31 @@ struct sdlobjs {
     SDL_Window *win;
     SDL_Renderer *ren;
     SDL_GLContext ctx;
+    bool quit;
 } sdl;
 
 struct matrix_unis {
     hmm_mat4 model;
     hmm_mat4 view;
     hmm_mat4 projection;
+};
+
+struct camera {
+    float yaw;
+    float pitch;
+    hmm_vec3 pos;
+    hmm_vec3 front;
+    hmm_vec3 up;
+    hmm_vec3 dir;
+};
+
+struct camera cam = {
+    .yaw = 0,
+    .pitch = 0,
+    .pos = {0.0f, 0.0f, 3.0f},
+    .front = { 0.0f, 0.0f, 0.0f},
+    .up = {0.0f, 1.0f, 0.0f},
+    .dir = {0.0f, 0.0f, 0.0f},
 };
 
 static int sdl_init()
@@ -65,7 +84,91 @@ static int sdl_init()
         return -1;
     }
 
+    sdl.quit = 0;
+
     return 0;
+}
+
+hmm_vec3 cubespos[10] = {
+   (hmm_vec3){.X= 0.0f,.Y=  0.0f,.Z=  0.0f}, 
+   (hmm_vec3){.X= 2.0f,.Y=  5.0f,.Z= -15.0f}, 
+   (hmm_vec3){.X=-1.5f,.Y= -2.2f,.Z= -2.5f},  
+   (hmm_vec3){.X=-3.8f,.Y= -2.0f,.Z= -12.3f},  
+   (hmm_vec3){.X= 2.4f,.Y= -0.4f,.Z= -3.5f},  
+   (hmm_vec3){.X=-1.7f,.Y=  3.0f,.Z= -7.5f},  
+   (hmm_vec3){.X= 1.3f,.Y= -2.0f,.Z= -2.5f},  
+   (hmm_vec3){.X= 1.5f,.Y=  2.0f,.Z= -2.5f}, 
+   (hmm_vec3){.X= 1.5f,.Y=  0.2f,.Z= -1.5f}, 
+   (hmm_vec3){.X=-1.3f,.Y=  1.0f,.Z= -1.5f} 
+};
+
+
+static void move_camera(int key)
+{
+    const float camspeed = 0.05f;
+    hmm_vec3 off;
+    switch (key) {
+        case SDLK_w:
+            off = HMM_MultiplyVec3f(cam.front, camspeed);
+            cam.pos = HMM_AddVec3(cam.pos, off);
+            break;
+        case SDLK_s:
+            off = HMM_MultiplyVec3f(cam.front, camspeed);
+            cam.pos = HMM_SubtractVec3(cam.pos, off);
+            break;
+        case SDLK_a:
+            off = HMM_MultiplyVec3f(HMM_NormalizeVec3(HMM_Cross(cam.front, cam.up)), camspeed);
+            cam.pos = HMM_SubtractVec3(cam.pos, off);
+            break;
+        case SDLK_d:
+            off = HMM_MultiplyVec3f(HMM_NormalizeVec3(HMM_Cross(cam.front, cam.up)), camspeed);
+            cam.pos = HMM_AddVec3(cam.pos, off);
+            break;
+        case SDLK_z:
+            printf("%f, %f, %f\n", cam.pos.X, cam.pos.Y, cam.pos.Z);
+            cam.pos.Y += camspeed;
+            break;
+        case SDLK_x:
+    }
+}
+
+static void rot_camera(int mx, int my)
+{
+    const float sens = 0.01f;
+    float xoff = (float)mx * sens;
+    float yoff = (float)my * sens;
+
+    cam.yaw += xoff;
+    cam.pitch += yoff;
+
+    if (cam.pitch > 89.0f)
+        cam.pitch = 89.0f;
+    else if (cam.pitch < -89.0f)
+        cam.pitch = -89.0f;
+
+    hmm_vec3 dir = HMM_Vec3(cosf(cam.yaw) * cosf(cam.pitch),
+                            sinf(cam.pitch),
+                            sinf(cam.yaw) * cosf(cam.pitch));
+    cam.front = HMM_NormalizeVec3(dir);
+}
+
+static void do_input()
+{
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+            sdl.quit = 1;
+            return;
+        }
+
+        else if (e.type == SDL_KEYDOWN) {
+            move_camera(e.key.keysym.sym);
+        }
+
+        else if (e.type == SDL_MOUSEMOTION) {
+            rot_camera(e.motion.xrel, e.motion.yrel);
+        }
+    }
 }
 
 int main(int argc, char **argv)
@@ -76,17 +179,55 @@ int main(int argc, char **argv)
     }
 
     float vertices[] = {
-        -0.5f,  0.5f, 0.0, 0.0, 1.0,
-        0.5f,   0.5f, 0.0, 1.0, 1.0,
-        0.5f,  -0.5f, 0.0, 1.0, 0.0,
-        -0.5f, -0.5f, 0.0, 0.0, 0.0,
-    };
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+};
 
     sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc) {
         .data.size = sizeof(vertices),
         .data.ptr = vertices,
     });
 
+/*
     u16 indices[] = {
         0, 1, 2,
         0, 2, 3
@@ -97,7 +238,7 @@ int main(int argc, char **argv)
         .data.ptr = indices,
         .type = SG_BUFFERTYPE_INDEXBUFFER,
     });
-
+*/
     int w,h,n;
     stbi_set_flip_vertically_on_load(true);
     unsigned char *data = stbi_load("sprites.png", &w, &h, &n, 0);
@@ -172,58 +313,59 @@ int main(int argc, char **argv)
                 .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
             },
         },
-        .index_type = SG_INDEXTYPE_UINT16,
+        //.index_type = SG_INDEXTYPE_UINT16,
         .layout = {
             .attrs = {
                 [0] = {.format = SG_VERTEXFORMAT_FLOAT3},
                 [1] = {.format = SG_VERTEXFORMAT_FLOAT2},
             },
         },
+        .depth = {
+            .compare = SG_COMPAREFUNC_LESS_EQUAL,
+            .write_enabled = true,
+        },
     });
 
     sg_bindings bind = {
         .vertex_buffers[0] = vbuf,
-        .index_buffer = ibuf,
+        //.index_buffer = ibuf,
         .fs_images[0] = img
     };
 
     sg_pass_action pass_action = {0};
 
-    hmm_mat4 model = HMM_Rotate(-55.0f, HMM_Vec3(1.0f, 0.0f, 0.0f));
-    hmm_mat4 view = HMM_Translate(HMM_Vec3(0.0f, 0.0f, -3.0f));
     hmm_mat4 projection = HMM_Perspective(45.0f, 800.0f/600.0f, 0.1f, 100.0f);
 
-    while (!SDL_QuitRequested()) {
+
+    while (!sdl.quit) {
+
+        do_input();
+
         int w, h;
         SDL_GL_GetDrawableSize(sdl.win, &w, &h);
         sg_begin_default_pass(&pass_action, w, h);
-        
-        /*
-        hmm_mat4 rotate = HMM_Rotate(90.0f, HMM_Vec3(0.0f, 0.0f, 1.0f));
-        hmm_mat4 scale = HMM_Scale(HMM_Vec3(0.5f, 0.5f, 0.5f));
-        hmm_mat4 trans = HMM_MultiplyMat4(rotate, scale);
-        */
-
-        hmm_mat4 translate = HMM_Translate(HMM_Vec3(0.5f, -0.5f, 0.0f));
-        hmm_mat4 rotate = HMM_Rotate((float)SDL_GetTicks() * 1,
-                HMM_Vec3(0.0f, 0.0f, 1.0f));
-        hmm_mat4 trans = HMM_MultiplyMat4(translate, rotate);
         sg_apply_pipeline(pip);
         sg_apply_bindings(&bind);
 
-        struct matrix_unis munis = {
-            .model = model,
-            .view = view,
-            .projection = projection,
-        };
+        hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
 
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range){&munis, sizeof(munis)});
+        for (int i = 0; i < 10; ++i) {
+            hmm_mat4 model = HMM_Translate(cubespos[i]);
+            model = HMM_MultiplyMat4(model, HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f)));
+            struct matrix_unis munis = {
+                .model = model,
+                .view = view,
+                .projection = projection,
+            };
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range){&munis, sizeof(munis)});
 
-        sg_draw(0, 6, 1);
+            sg_draw(0, 36, 1);
+        }
+
         sg_end_pass();
         sg_commit();
         SDL_GL_SwapWindow(sdl.win);
-        SDL_Delay(10);
+        //SDL_Delay(16);
     }
 
     sg_shutdown();
