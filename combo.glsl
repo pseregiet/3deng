@@ -36,7 +36,6 @@ uniform fs_params {
 };
 
 uniform fs_material {
-    vec3 specular;
     float shine;
 } material;
 
@@ -48,6 +47,7 @@ uniform fs_light {
 } light;
 
 uniform sampler2D diffuse_tex;
+uniform sampler2D specular_tex;
 
 void main() {
 
@@ -61,7 +61,7 @@ void main() {
     vec3 viewdir = normalize(viewpos - fragpos);
     vec3 reflectdir = reflect(-lightdir, norm);
     float spec = pow(max(dot(viewdir, reflectdir), 0.0), material.shine);
-    vec3 specular = light.specular * (spec * material.specular);
+    vec3 specular = light.specular * spec * vec3(texture(specular_tex, uv));
 
     vec3 result = ambient + diffuse + specular;
     frag_color = vec4(result, 1.0);
@@ -70,3 +70,27 @@ void main() {
 
 @program comboshader vs fs
 
+
+@vs light_cube_vs
+in vec3 pos;
+
+uniform vs_params {
+    mat4 model;
+    mat4 view;
+    mat4 projection;
+};
+
+void main() {
+    gl_Position = projection * view * model * vec4(pos, 1.0);
+}
+@end
+
+@fs light_cube_fs
+out vec4 frag;
+
+void main() {
+    frag = vec4(1.0, 1.0, 1.0, 1.0);
+}
+@end
+
+@program light_cube light_cube_vs light_cube_fs

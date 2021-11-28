@@ -96,7 +96,7 @@ static int sdl_init()
 }
 
 hmm_vec3 cubespos[10] = {
-   (hmm_vec3){.X= 0.0f,.Y=  0.0f,.Z=  0.0f}, 
+   (hmm_vec3){.X= 1.0f,.Y=  1.0f,.Z=  1.0f}, 
    (hmm_vec3){.X= 2.0f,.Y=  5.0f,.Z= -15.0f}, 
    (hmm_vec3){.X=-1.5f,.Y= -2.2f,.Z= -2.5f},  
    (hmm_vec3){.X=-3.8f,.Y= -2.0f,.Z= -12.3f},  
@@ -177,6 +177,33 @@ static void do_input()
     }
 }
 
+static int load_sg_image(const char *fn, sg_image *img)
+{
+    int w,h,n;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char *data = stbi_load(fn, &w, &h, &n, 0);
+    if (!data) {
+        fatalerror("stbi_load(%s) failed\n", fn);
+        return -1;
+    }
+
+    printf("%d:%d:%d\n", w, h, n);
+
+    *img = sg_make_image(&(sg_image_desc) {
+        .width = w,
+        .height = h,
+        .pixel_format = SG_PIXELFORMAT_RGBA8,
+        .min_filter = SG_FILTER_NEAREST,
+        .mag_filter = SG_FILTER_NEAREST,
+        .data.subimage[0][0] = {
+            .ptr = data,
+            .size = (w*h*n),
+        },
+    });
+
+    stbi_image_free(data);
+}
+
 int main(int argc, char **argv)
 {
     if (sdl_init()) {
@@ -233,7 +260,7 @@ int main(int argc, char **argv)
         .data.size = sizeof(vertices),
         .data.ptr = vertices,
     });
-
+    
 /*
     u16 indices[] = {
         0, 1, 2,
@@ -246,31 +273,22 @@ int main(int argc, char **argv)
         .type = SG_BUFFERTYPE_INDEXBUFFER,
     });
 */
-    int w,h,n;
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char *data = stbi_load("sprites.png", &w, &h, &n, 0);
-    if (!data) {
-        fatalerror("stbi_load(%s) failed\n", "sprites.png");
+
+    sg_image img;
+    sg_image img2;
+    if (load_sg_image("container2.png", &img)) {
+        fatalerror("cannot load image\n");
         return -1;
     }
 
-    printf("%d:%d:%d\n", w, h, n);
+    if (load_sg_image("container2_specular.png", &img2)) {
+        fatalerror("cannot load image\n");
+        return -1;
+    }
 
-    sg_image img = sg_make_image(&(sg_image_desc) {
-        .width = w,
-        .height = h,
-        .pixel_format = SG_PIXELFORMAT_RGBA8,
-        .min_filter = SG_FILTER_NEAREST,
-        .mag_filter = SG_FILTER_NEAREST,
-        .data.subimage[0][0] = {
-            .ptr = data,
-            .size = (w*h*n),
-        },
-    });
-
-    printf("sg_image\n");
 
     sg_shader shd = sg_make_shader(comboshader_shader_desc(SG_BACKEND_GLCORE33));
+    sg_shader lightshd = sg_make_shader(light_cube_shader_desc(SG_BACKEND_GLCORE33));
 
     printf("shd = %p\n", &shd);
 
@@ -302,10 +320,40 @@ int main(int argc, char **argv)
     sg_bindings bind = {
         .vertex_buffers[0] = vbuf,
         //.index_buffer = ibuf,
-        .fs_images[SLOT_diffuse_tex] = img
+        .fs_images[SLOT_diffuse_tex] = img,
+        .fs_images[SLOT_specular_tex] = img2,
+    };
+    
+    sg_pipeline lighpip = sg_make_pipeline(&(sg_pipeline_desc) {
+        .shader = lightshd,
+        .color_count = 1,
+        .colors[0] = {
+            .write_mask = SG_COLORMASK_RGB,
+            .blend = {
+                .enabled = true,
+                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+            },
+        },
+        //.index_type = SG_INDEXTYPE_UINT16,
+        .layout = {
+            .attrs = {
+                [ATTR_light_cube_vs_pos] = {.format = SG_VERTEXFORMAT_FLOAT3},
+            },
+            .buffers[0].stride = 32,
+        },
+        .depth = {
+            .compare = SG_COMPAREFUNC_LESS_EQUAL,
+            .write_enabled = true,
+        },
+    });
+    sg_bindings lightbind = {
+        .vertex_buffers[0] = vbuf,
     };
 
-    sg_pass_action pass_action = {0};
+    sg_pass_action pass_action = {
+        .colors[0] = {.action = SG_ACTION_CLEAR, .value = {0.0, 0.0, 0.0, 1.0 }},
+    };
 
     hmm_mat4 projection = HMM_Perspective(45.0f, 800.0f/600.0f, 0.1f, 100.0f);
 
@@ -329,7 +377,6 @@ int main(int argc, char **argv)
         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_params, &SG_RANGE(fs_params));
 
         fs_material_t fs_material = {
-            .specular = HMM_Vec3(0.5f, 0.5f, 0.5f),
             .shine = 32.0f,
         };
 
@@ -348,7 +395,7 @@ int main(int argc, char **argv)
 
         for (int i = 0; i < 10; ++i) {
             hmm_mat4 model = HMM_Translate(cubespos[i]);
-            model = HMM_MultiplyMat4(model, HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f)));
+            model = HMM_MultiplyMat4(model, HMM_Rotate(100.0f/*(float)SDL_GetTicks()/10 + (i*50)*/, HMM_Vec3(1.0f, 0.3f, 0.5f)));
             vs_params_t munis = {
                 .model = model,
                 .view = view,
@@ -358,6 +405,17 @@ int main(int argc, char **argv)
 
             sg_draw(0, 36, 1);
         }
+
+        sg_apply_pipeline(lighpip);
+        sg_apply_bindings(&lightbind);
+        vs_params_t lvs = {
+            .view = view,
+            .projection = projection,
+        };
+        lvs.model = HMM_Translate(lightpos);
+        lvs.model = HMM_MultiplyMat4(lvs.model, HMM_Scale(HMM_Vec3(0.2f, 0.2f, 0.2f)));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_params, &SG_RANGE(lvs));
+        sg_draw(0, 36, 1);
 
         sg_end_pass();
         sg_commit();
