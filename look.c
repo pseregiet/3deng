@@ -13,6 +13,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "shaderloader.h"
+#include "genshader.h"
+
 #define u16 uint16_t
 
 #define WW 800
@@ -46,29 +49,6 @@ struct camera {
 
 char vs[0x1000];
 char fs[0x1000];
-char *load_shader(const char *fn, char *dst)
-{
-    FILE *f = fopen(fn, "r");
-    if (!f) {
-        fatalerror("cannot open %s shader\n", fn);
-        return 0;
-    }
-
-    int size;
-    fseek(f, 0, SEEK_END);
-    size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    if (size >= 0x1000) {
-        fatalerror("shader %s larger than expected %x > %x\n", fn, size, 0x1000);
-        return 0;
-    }
-    
-    fread(dst, 1, size, f);
-    dst[size] = 0;
-    
-    return dst;
-}
 
 struct camera cam = {
     .yaw = 0,
@@ -204,49 +184,50 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    float vertices[] = {
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+        float vertices[] = {
+        // positions          // normals           // texture coords
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
 
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
 
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
 
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
 
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,
 
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-};
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f
+    };
 
     sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc) {
         .data.size = sizeof(vertices),
@@ -289,22 +270,7 @@ int main(int argc, char **argv)
 
     printf("sg_image\n");
 
-    sg_shader shd = sg_make_shader(&(sg_shader_desc) {
-        .fs.images[0] = {
-            .name = "tex",
-            .image_type = SG_IMAGETYPE_2D,
-        },
-        .vs.uniform_blocks[0] = {
-            .size = sizeof(struct matrix_unis),
-            .uniforms = {
-                [0] = {.name="model", .type = SG_UNIFORMTYPE_MAT4},
-                [1] = {.name="view", .type = SG_UNIFORMTYPE_MAT4},
-                [2] = {.name="projection", .type = SG_UNIFORMTYPE_MAT4},
-            },
-        },
-        .vs.source = load_shader("vs.glsl", vs),
-        .fs.source = load_shader("fs.glsl", fs),
-    });
+    sg_shader shd = sg_make_shader(comboshader_shader_desc(SG_BACKEND_GLCORE33));
 
     printf("shd = %p\n", &shd);
 
@@ -322,8 +288,9 @@ int main(int argc, char **argv)
         //.index_type = SG_INDEXTYPE_UINT16,
         .layout = {
             .attrs = {
-                [0] = {.format = SG_VERTEXFORMAT_FLOAT3},
-                [1] = {.format = SG_VERTEXFORMAT_FLOAT2},
+                [ATTR_vs_position] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_normal] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_texcoord] = {.format = SG_VERTEXFORMAT_FLOAT2},
             },
         },
         .depth = {
@@ -335,13 +302,14 @@ int main(int argc, char **argv)
     sg_bindings bind = {
         .vertex_buffers[0] = vbuf,
         //.index_buffer = ibuf,
-        .fs_images[0] = img
+        .fs_images[SLOT_diffuse_tex] = img
     };
 
     sg_pass_action pass_action = {0};
 
     hmm_mat4 projection = HMM_Perspective(45.0f, 800.0f/600.0f, 0.1f, 100.0f);
 
+    hmm_vec3 lightpos = {1.2f, 1.0f, 2.0f};
 
     while (!sdl.quit) {
 
@@ -353,12 +321,35 @@ int main(int argc, char **argv)
         sg_apply_pipeline(pip);
         sg_apply_bindings(&bind);
 
+        //fs uniforms
+        fs_params_t fs_params = {
+            .viewpos = cam.pos,
+        };
+
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_params, &SG_RANGE(fs_params));
+
+        fs_material_t fs_material = {
+            .specular = HMM_Vec3(0.5f, 0.5f, 0.5f),
+            .shine = 32.0f,
+        };
+
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_material, &SG_RANGE(fs_material));
+
+        fs_light_t fs_light = {
+            .position = lightpos,
+            .ambient = HMM_Vec3(0.2f, 0.2f, 0.2f),
+            .diffuse = HMM_Vec3(0.5f, 0.5f, 0.5f),
+            .specular = HMM_Vec3(1.0f, 1.0f, 1.0f),
+        };
+
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_light, &SG_RANGE(fs_light));
+
         hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
 
         for (int i = 0; i < 10; ++i) {
             hmm_mat4 model = HMM_Translate(cubespos[i]);
             model = HMM_MultiplyMat4(model, HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f)));
-            struct matrix_unis munis = {
+            vs_params_t munis = {
                 .model = model,
                 .view = view,
                 .projection = projection,
