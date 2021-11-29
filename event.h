@@ -10,7 +10,7 @@ struct camera {
     hmm_vec3 dir;
 };
 
-void do_input();
-void move_camera();
+void do_input(double delta);
+void move_camera(double delta);
 
 #endif

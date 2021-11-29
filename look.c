@@ -1,6 +1,7 @@
 //------------------------------------------------------------------------------
 //  1-9-3-look
 //------------------------------------------------------------------------------
+#define SOKOL_NO_SOKOL_APP
 #include "../sokol/sokol_gfx.h"
 
 #include <GL/gl.h>
@@ -13,24 +14,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "sdl2_stuff.h"
 #include "shaderloader.h"
 #include "event.h"
 #include "genshader.h"
+#include "sdl2_imgui.h"
 
 #define u16 uint16_t
 
-#define WW 800
-#define WH 600
+#define WW 1280
+#define WH 720
 
 #define fatalerror(...)\
     printf(__VA_ARGS__);\
     exit(-1)
 
-struct sdlobjs {
-    SDL_Window *win;
-    SDL_Renderer *ren;
-    SDL_GLContext ctx;
-} sdl;
+struct sdlobjs sdl = {0};
 
 bool gquit = 0;
 struct matrix_unis {
@@ -83,7 +82,7 @@ static int sdl_init()
         return -1;
     }
 
-    SDL_SetRelativeMouseMode(true);
+    igsdl2_Init();
 
     gquit = 0;
 
@@ -149,12 +148,33 @@ struct frameinfo {
     sg_pass_action pass_action;
 };
 
-static void do_frame(struct frameinfo *fi)
+static void do_imgui_frame(int w, int h, double delta)
 {
-    hmm_mat4 projection = HMM_Perspective(45.0f, 800.0f/600.0f, 0.1f, 100.0f);
+    simgui_new_frame(w, h, delta);
+    static float f = 0.0f;
+
+    igBegin("Hello world! window", NULL, 0);
+    igText("Useful text");
+    igText("Hello World!");
+    igSliderFloat("float", &f, 0.0f, 1.0f, "%.3f", 1.0f);
+    //igText("App average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO()->Framerate, igGetIO->Framerate);
+    igEnd();
+
+    igSetNextWindowPos((ImVec2){460, 20}, ImGuiCond_FirstUseEver, (ImVec2){0,0});
+    igShowDemoWindow(0);
+
+}
+
+static void do_frame(struct frameinfo *fi, double delta)
+{
+    hmm_mat4 projection = HMM_Perspective(45.0f, (float)WW/(float)WH, 0.1f, 100.0f);
 
     int w, h;
     SDL_GL_GetDrawableSize(sdl.win, &w, &h);
+    
+    if (sdl.imguifocus)
+        do_imgui_frame(w, h, delta);
+
     sg_begin_default_pass(&fi->pass_action, w, h);
     sg_apply_pipeline(fi->mainpip);
     sg_apply_bindings(&fi->mainbind);
@@ -245,6 +265,9 @@ static void do_frame(struct frameinfo *fi)
         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_params, &SG_RANGE(lvs));
         sg_draw(0, 36, 1);
     }
+
+    if (sdl.imguifocus)
+        simgui_render();
 
     sg_end_pass();
     sg_commit();
@@ -404,13 +427,20 @@ int main(int argc, char **argv)
     };
 
 
+    uint64_t now = SDL_GetPerformanceCounter();
+    uint64_t last = 0;
+    double delta = 0;
     while (!gquit) {
-        do_input();
-        move_camera();
-        do_frame(&fi);
+        last = now;
+        now = SDL_GetPerformanceCounter();
+        delta = ((now - last)*1000 / (double)SDL_GetPerformanceFrequency());
+
+        do_input(delta);
+        do_frame(&fi, delta);
 
     }
 
+    igsdl2_Shutdown();
     sg_shutdown();
     SDL_GL_DeleteContext(sdl.ctx);
     SDL_DestroyWindow(sdl.win);

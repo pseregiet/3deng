@@ -4,6 +4,8 @@
 
 #include "hmm.h"
 #include "event.h"
+#include "sdl2_stuff.h"
+#include "sdl2_imgui.h"
 
 enum keys {
     KEYW,
@@ -13,13 +15,14 @@ enum keys {
     KEY_COUNT,
 };
 
+extern struct sdlobjs sdl;
 extern struct camera cam;
 extern bool gquit;
 char keymap[KEY_COUNT] = {0};
 
-void move_camera()
+void move_camera(double delta)
 {
-    const float camspeed = 0.05f;
+    float camspeed = 0.05f * delta;
     hmm_vec3 off;
     if (keymap[KEYW]) {
         off = HMM_MultiplyVec3f(cam.front, camspeed);
@@ -69,13 +72,24 @@ static void rot_camera(int mx, int my)
     cam.front = HMM_NormalizeVec3(dir);
 }
 
-void do_input()
+void do_input(double delta)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT) {
             gquit = 1;
             return;
+        }
+
+        if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_BACKQUOTE) {
+            SDL_SetRelativeMouseMode(sdl.imguifocus);
+            sdl.imguifocus = !sdl.imguifocus;
+
+        }
+
+        if (sdl.imguifocus) {
+            igsdl2_ProcessEvent(&e);
+            continue;
         }
 
         else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
@@ -95,4 +109,12 @@ void do_input()
             rot_camera(e.motion.xrel, e.motion.yrel);
         }
     }
+
+    if (sdl.imguifocus) {
+        igsdl2_UpdateMousePosAndButtons();
+        igsdl2_UpdateMouseCursor();
+        return;
+    }
+
+    move_camera(delta);
 }
