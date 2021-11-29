@@ -139,6 +139,118 @@ static int load_sg_image(const char *fn, sg_image *img)
     stbi_image_free(data);
 }
 
+struct frameinfo {
+    sg_pipeline mainpip;
+    sg_bindings mainbind;
+
+    sg_pipeline lightpip;
+    sg_bindings lightbind;
+
+    sg_pass_action pass_action;
+};
+
+static void do_frame(struct frameinfo *fi)
+{
+    hmm_mat4 projection = HMM_Perspective(45.0f, 800.0f/600.0f, 0.1f, 100.0f);
+
+    int w, h;
+    SDL_GL_GetDrawableSize(sdl.win, &w, &h);
+    sg_begin_default_pass(&fi->pass_action, w, h);
+    sg_apply_pipeline(fi->mainpip);
+    sg_apply_bindings(&fi->mainbind);
+
+    //fs uniforms
+    fs_params_t fs_params = {
+        .viewpos = cam.pos,
+        .matshine = 32.0f,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_params, &SG_RANGE(fs_params));
+
+    fs_dir_light_t fs_dir_light = {
+        .direction = HMM_Vec3(-0.2f, -1.0f, -0.3f),
+        .ambient = HMM_Vec3(0.05f, 0.05f, 0.05f),
+        .diffuse = HMM_Vec3(0.4f, 0.4f, 0.4f),
+        .specular = HMM_Vec3(0.5f, 0.5f, 0.5f)
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_dir_light, &SG_RANGE(fs_dir_light));
+
+    fs_point_lights_t fs_point_lights = {
+        .position[0]    = lightspos[0],
+        .ambient[0]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
+        .diffuse[0]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
+        .specular[0]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
+        .attenuation[0] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f),
+        .position[1]    = lightspos[1],
+        .ambient[1]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
+        .diffuse[1]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
+        .specular[1]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
+        .attenuation[1] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f),
+        .position[2]    = lightspos[2],
+        .ambient[2]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
+        .diffuse[2]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
+        .specular[2]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
+        .attenuation[2] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f),
+        .position[3]    = lightspos[3],
+        .ambient[3]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
+        .diffuse[3]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
+        .specular[3]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
+        .attenuation[3] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f)
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_point_lights, &SG_RANGE(fs_point_lights));
+
+    fs_spot_light_t fs_spot_light = {
+        .position = cam.pos,
+        .direction = cam.front,//HMM_AddVec3(cam.pos, cam.front),
+        .cutoff = HMM_COSF(HMM_ToRadians(12.5f)),//cosf(12.5f),
+        .outcutoff = HMM_COSF(HMM_ToRadians(15.0f)),//cosf(15.0f),
+        .attenuation = HMM_Vec3(1.0f, 0.09f, 0.032f),
+        .ambient = HMM_Vec3(0.0f, 0.0f, 0.0f),
+        .diffuse = HMM_Vec3(1.0f, 1.0f, 1.0f),
+        .specular = HMM_Vec3(1.0f, 1.0f, 1.0f)
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_spot_light, &SG_RANGE(fs_spot_light));
+
+    hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
+
+    for (int i = 0; i < 10; ++i) {
+        hmm_mat4 model = HMM_Translate(cubespos[i]);
+        model = HMM_MultiplyMat4(model, HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f)));
+        vs_params_t munis = {
+            .model = model,
+            .view = view,
+            .projection = projection,
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
+
+        sg_draw(0, 36, 1);
+    }
+
+    sg_apply_pipeline(fi->lightpip);
+    sg_apply_bindings(&fi->lightbind);
+    vs_params_t lvs = {
+        .view = view,
+        .projection = projection,
+    };
+
+    hmm_mat4 scale = HMM_Scale(HMM_Vec3(0.2f, 0.2f, 0.2f));
+    for (int i = 0; i < 4; ++i) {
+        hmm_vec3 pos = {
+            lightspos[i].X,
+            lightspos[i].Y,
+            lightspos[i].Z
+        };
+        lvs.model = HMM_Translate(pos);
+        lvs.model = HMM_MultiplyMat4(lvs.model, scale);
+
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_params, &SG_RANGE(lvs));
+        sg_draw(0, 36, 1);
+    }
+
+    sg_end_pass();
+    sg_commit();
+    SDL_GL_SwapWindow(sdl.win);
+}
+
 int main(int argc, char **argv)
 {
     if (sdl_init()) {
@@ -146,7 +258,9 @@ int main(int argc, char **argv)
         return -1;
     }
 
-        float vertices[] = {
+    struct frameinfo fi;
+
+    float vertices[] = {
         // positions          // normals           // texture coords
         -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
          0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  0.0f,
@@ -225,9 +339,7 @@ int main(int argc, char **argv)
     sg_shader shd = sg_make_shader(comboshader_shader_desc(SG_BACKEND_GLCORE33));
     sg_shader lightshd = sg_make_shader(light_cube_shader_desc(SG_BACKEND_GLCORE33));
 
-    printf("shd = %p\n", &shd);
-
-    sg_pipeline pip = sg_make_pipeline(&(sg_pipeline_desc) {
+    fi.mainpip = sg_make_pipeline(&(sg_pipeline_desc) {
         .shader = shd,
         .color_count = 1,
         .colors[0] = {
@@ -252,14 +364,14 @@ int main(int argc, char **argv)
         },
     });
 
-    sg_bindings bind = {
+    fi.mainbind = (sg_bindings){
         .vertex_buffers[0] = vbuf,
         //.index_buffer = ibuf,
         .fs_images[SLOT_diffuse_tex] = img,
         .fs_images[SLOT_specular_tex] = img2,
     };
     
-    sg_pipeline lighpip = sg_make_pipeline(&(sg_pipeline_desc) {
+    fi.lightpip = sg_make_pipeline(&(sg_pipeline_desc) {
         .shader = lightshd,
         .color_count = 1,
         .colors[0] = {
@@ -282,120 +394,21 @@ int main(int argc, char **argv)
             .write_enabled = true,
         },
     });
-    sg_bindings lightbind = {
+
+    fi.lightbind = (sg_bindings){
         .vertex_buffers[0] = vbuf,
     };
 
-    sg_pass_action pass_action = {
+    fi.pass_action = (sg_pass_action){
         .colors[0] = {.action = SG_ACTION_CLEAR, .value = {0.0, 0.0, 0.0, 1.0 }},
     };
 
-    hmm_mat4 projection = HMM_Perspective(45.0f, 800.0f/600.0f, 0.1f, 100.0f);
-
-    hmm_vec3 lightpos = {1.2f, 1.0f, 2.0f};
 
     while (!gquit) {
-
         do_input();
         move_camera();
+        do_frame(&fi);
 
-        int w, h;
-        SDL_GL_GetDrawableSize(sdl.win, &w, &h);
-        sg_begin_default_pass(&pass_action, w, h);
-        sg_apply_pipeline(pip);
-        sg_apply_bindings(&bind);
-
-        //fs uniforms
-        fs_params_t fs_params = {
-            .viewpos = cam.pos,
-            .matshine = 32.0f,
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_params, &SG_RANGE(fs_params));
-
-        fs_dir_light_t fs_dir_light = {
-            .direction = HMM_Vec3(-0.2f, -1.0f, -0.3f),
-            .ambient = HMM_Vec3(0.05f, 0.05f, 0.05f),
-            .diffuse = HMM_Vec3(0.4f, 0.4f, 0.4f),
-            .specular = HMM_Vec3(0.5f, 0.5f, 0.5f)
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_dir_light, &SG_RANGE(fs_dir_light));
-
-        fs_point_lights_t fs_point_lights = {
-            .position[0]    = lightspos[0],
-            .ambient[0]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
-            .diffuse[0]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
-            .specular[0]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
-            .attenuation[0] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f),
-            .position[1]    = lightspos[1],
-            .ambient[1]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
-            .diffuse[1]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
-            .specular[1]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
-            .attenuation[1] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f),
-            .position[2]    = lightspos[2],
-            .ambient[2]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
-            .diffuse[2]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
-            .specular[2]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
-            .attenuation[2] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f),
-            .position[3]    = lightspos[3],
-            .ambient[3]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
-            .diffuse[3]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
-            .specular[3]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
-            .attenuation[3] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f)
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_point_lights, &SG_RANGE(fs_point_lights));
-
-        fs_spot_light_t fs_spot_light = {
-            .position = cam.pos,
-            .direction = cam.front,//HMM_AddVec3(cam.pos, cam.front),
-            .cutoff = HMM_COSF(HMM_ToRadians(12.5f)),//cosf(12.5f),
-            .outcutoff = HMM_COSF(HMM_ToRadians(15.0f)),//cosf(15.0f),
-            .attenuation = HMM_Vec3(1.0f, 0.09f, 0.032f),
-            .ambient = HMM_Vec3(0.0f, 0.0f, 0.0f),
-            .diffuse = HMM_Vec3(1.0f, 1.0f, 1.0f),
-            .specular = HMM_Vec3(1.0f, 1.0f, 1.0f)
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_spot_light, &SG_RANGE(fs_spot_light));
-
-        hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
-
-        for (int i = 0; i < 10; ++i) {
-            hmm_mat4 model = HMM_Translate(cubespos[i]);
-            model = HMM_MultiplyMat4(model, HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f)));
-            vs_params_t munis = {
-                .model = model,
-                .view = view,
-                .projection = projection,
-            };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
-
-            sg_draw(0, 36, 1);
-        }
-
-        sg_apply_pipeline(lighpip);
-        sg_apply_bindings(&lightbind);
-        vs_params_t lvs = {
-            .view = view,
-            .projection = projection,
-        };
-
-        hmm_mat4 scale = HMM_Scale(HMM_Vec3(0.2f, 0.2f, 0.2f));
-        for (int i = 0; i < 4; ++i) {
-            hmm_vec3 pos = {
-                lightspos[i].X,
-                lightspos[i].Y,
-                lightspos[i].Z
-            };
-            lvs.model = HMM_Translate(pos);
-            lvs.model = HMM_MultiplyMat4(lvs.model, scale);
-
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_params, &SG_RANGE(lvs));
-            sg_draw(0, 36, 1);
-        }
-
-        sg_end_pass();
-        sg_commit();
-        SDL_GL_SwapWindow(sdl.win);
-        //SDL_Delay(16);
     }
 
     sg_shutdown();
