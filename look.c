@@ -330,7 +330,7 @@ int main(int argc, char **argv)
                 .view = view,
                 .projection = projection,
             };
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &(sg_range){&munis, sizeof(munis)});
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
 
             sg_draw(0, 36, 1);
         }
