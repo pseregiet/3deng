@@ -14,6 +14,7 @@
 #include <stdlib.h>
 
 #include "shaderloader.h"
+#include "event.h"
 #include "genshader.h"
 
 #define u16 uint16_t
@@ -29,32 +30,24 @@ struct sdlobjs {
     SDL_Window *win;
     SDL_Renderer *ren;
     SDL_GLContext ctx;
-    bool quit;
 } sdl;
 
+bool gquit = 0;
 struct matrix_unis {
     hmm_mat4 model;
     hmm_mat4 view;
     hmm_mat4 projection;
 };
 
-struct camera {
-    float yaw;
-    float pitch;
-    hmm_vec3 pos;
-    hmm_vec3 front;
-    hmm_vec3 up;
-    hmm_vec3 dir;
-};
 
 char vs[0x1000];
 char fs[0x1000];
 
 struct camera cam = {
-    .yaw = 0,
+    .yaw = -90.f,
     .pitch = 0,
     .pos = {0.0f, 0.0f, 3.0f},
-    .front = { 0.0f, 0.0f, 0.0f},
+    .front = { 0.0f, 0.0f, -1.0f},
     .up = {0.0f, 1.0f, 0.0f},
     .dir = {0.0f, 0.0f, 0.0f},
 };
@@ -90,7 +83,9 @@ static int sdl_init()
         return -1;
     }
 
-    sdl.quit = 0;
+    SDL_SetRelativeMouseMode(true);
+
+    gquit = 0;
 
     return 0;
 }
@@ -109,73 +104,6 @@ hmm_vec3 cubespos[10] = {
 };
 
 
-static void move_camera(int key)
-{
-    const float camspeed = 0.05f;
-    hmm_vec3 off;
-    switch (key) {
-        case SDLK_w:
-            off = HMM_MultiplyVec3f(cam.front, camspeed);
-            cam.pos = HMM_AddVec3(cam.pos, off);
-            break;
-        case SDLK_s:
-            off = HMM_MultiplyVec3f(cam.front, camspeed);
-            cam.pos = HMM_SubtractVec3(cam.pos, off);
-            break;
-        case SDLK_a:
-            off = HMM_MultiplyVec3f(HMM_NormalizeVec3(HMM_Cross(cam.front, cam.up)), camspeed);
-            cam.pos = HMM_SubtractVec3(cam.pos, off);
-            break;
-        case SDLK_d:
-            off = HMM_MultiplyVec3f(HMM_NormalizeVec3(HMM_Cross(cam.front, cam.up)), camspeed);
-            cam.pos = HMM_AddVec3(cam.pos, off);
-            break;
-        case SDLK_z:
-            printf("%f, %f, %f\n", cam.pos.X, cam.pos.Y, cam.pos.Z);
-            cam.pos.Y += camspeed;
-            break;
-        case SDLK_x:
-    }
-}
-
-static void rot_camera(int mx, int my)
-{
-    const float sens = 0.01f;
-    float xoff = (float)mx * sens;
-    float yoff = (float)my * sens;
-
-    cam.yaw += xoff;
-    cam.pitch += yoff;
-
-    if (cam.pitch > 89.0f)
-        cam.pitch = 89.0f;
-    else if (cam.pitch < -89.0f)
-        cam.pitch = -89.0f;
-
-    hmm_vec3 dir = HMM_Vec3(cosf(cam.yaw) * cosf(cam.pitch),
-                            sinf(cam.pitch),
-                            sinf(cam.yaw) * cosf(cam.pitch));
-    cam.front = HMM_NormalizeVec3(dir);
-}
-
-static void do_input()
-{
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-        if (e.type == SDL_QUIT) {
-            sdl.quit = 1;
-            return;
-        }
-
-        else if (e.type == SDL_KEYDOWN) {
-            move_camera(e.key.keysym.sym);
-        }
-
-        else if (e.type == SDL_MOUSEMOTION) {
-            rot_camera(e.motion.xrel, e.motion.yrel);
-        }
-    }
-}
 
 static int load_sg_image(const char *fn, sg_image *img)
 {
@@ -359,9 +287,10 @@ int main(int argc, char **argv)
 
     hmm_vec3 lightpos = {1.2f, 1.0f, 2.0f};
 
-    while (!sdl.quit) {
+    while (!gquit) {
 
         do_input();
+        move_camera();
 
         int w, h;
         SDL_GL_GetDrawableSize(sdl.win, &w, &h);
@@ -395,7 +324,7 @@ int main(int argc, char **argv)
 
         for (int i = 0; i < 10; ++i) {
             hmm_mat4 model = HMM_Translate(cubespos[i]);
-            model = HMM_MultiplyMat4(model, HMM_Rotate(100.0f/*(float)SDL_GetTicks()/10 + (i*50)*/, HMM_Vec3(1.0f, 0.3f, 0.5f)));
+            model = HMM_MultiplyMat4(model, HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f)));
             vs_params_t munis = {
                 .model = model,
                 .view = view,
