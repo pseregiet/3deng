@@ -1,4 +1,5 @@
 @ctype vec3 hmm_vec3
+@ctype vec4 hmm_vec4
 @ctype mat4 hmm_mat4
 
 @vs vs
@@ -33,39 +34,209 @@ out vec4 frag_color;
 
 uniform fs_params {
     vec3 viewpos;
+    float matshine;
 };
 
-uniform fs_material {
-    float shine;
-} material;
-
-uniform fs_light {
-    vec3 position;
+uniform fs_dir_light {
+    vec3 direction;
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
-} light;
+} dir_light;
+
+#define NR_POINT_LIGHTS 4
+
+uniform fs_point_lights {
+    vec4 position[NR_POINT_LIGHTS];
+    vec4 ambient[NR_POINT_LIGHTS];
+    vec4 diffuse[NR_POINT_LIGHTS];
+    vec4 specular[NR_POINT_LIGHTS];
+    vec4 attenuation[NR_POINT_LIGHTS];
+} point_lights;
+
+uniform fs_spot_light {
+    vec3 position;
+    vec3 direction;
+    float cutoff;
+    float outcutoff;
+    vec3 attenuation;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+} spot_light;
+
+struct dir_light_t {
+    vec3 direction;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+struct point_light_t {
+    vec3 position;
+    float constant;
+    float linear;
+    float quadratic;  
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+struct spot_light_t {
+    vec3 position;
+    vec3 direction;
+    float cutoff;
+    float outcutoff;
+    float constant;
+    float linear;
+    float quadratic;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular; 
+};
+
+dir_light_t get_directional_light();
+point_light_t get_point_light(int index);
+spot_light_t  get_spot_light();
+
+vec3 calc_dir_light(dir_light_t light, vec3 normal, vec3 viewdir);
+vec3 calc_point_light(point_light_t light, vec3 normal, vec3 fragpos, vec3 viewdir);
+vec3 calc_spot_light(spot_light_t light, vec3 normal, vec3 fragpos, vec3 viewdir);
 
 uniform sampler2D diffuse_tex;
 uniform sampler2D specular_tex;
 
 void main() {
-
-    vec3 ambient = light.ambient * vec3(texture(diffuse_tex, uv));
-
+    //properties
     vec3 norm = normalize(normalo);
-    vec3 lightdir = normalize(light.position - fragpos);
-    float diff = max(dot(norm, lightdir), 0.0);
-    vec3 diffuse = light.diffuse * diff * vec3(texture(diffuse_tex, uv));
-
     vec3 viewdir = normalize(viewpos - fragpos);
-    vec3 reflectdir = reflect(-lightdir, norm);
-    float spec = pow(max(dot(viewdir, reflectdir), 0.0), material.shine);
-    vec3 specular = light.specular * spec * vec3(texture(specular_tex, uv));
 
-    vec3 result = ambient + diffuse + specular;
+    //phase 1: directional lighting
+    vec3 result = calc_dir_light(get_directional_light(), norm, viewdir);
+    
+    //phase 2: point lights
+    for (int i = 0; i < NR_POINT_LIGHTS; ++i) {
+        result += calc_point_light(get_point_light(i), norm, fragpos, viewdir);
+    }
+
+    //phase 3: spot light
+    result += calc_spot_light(get_spot_light(), norm, fragpos, viewdir);
+
     frag_color = vec4(result, 1.0);
 }
+
+dir_light_t get_directional_light() {
+    return dir_light_t(
+        dir_light.direction,
+        dir_light.ambient,
+        dir_light.diffuse,
+        dir_light.specular
+    );
+}
+
+point_light_t get_point_light(int i) {
+    return point_light_t(
+        point_lights.position[i].xyz,
+        point_lights.attenuation[i].x,
+        point_lights.attenuation[i].y,
+        point_lights.attenuation[i].z,
+        point_lights.ambient[i].xyz,
+        point_lights.diffuse[i].xyz,
+        point_lights.specular[i].xyz
+    );
+}
+
+spot_light_t get_spot_light() {
+    return spot_light_t(
+        spot_light.position,
+        spot_light.direction,
+        spot_light.cutoff,
+        spot_light.outcutoff,
+        spot_light.attenuation.x,
+        spot_light.attenuation.y,
+        spot_light.attenuation.z,
+        spot_light.ambient,
+        spot_light.diffuse,
+        spot_light.specular
+    );
+}
+
+vec3 calc_dir_light(dir_light_t light, vec3 normal, vec3 viewdir) {
+    vec3 lightdir = normalize(-light.direction);
+    //diffuse shading
+    float diff = max(dot(normal, lightdir), 0.0);
+    //specular
+    vec3 reflectdir = reflect(-lightdir, normal);
+    float spec = pow(max(dot(viewdir, reflectdir), 0.0), matshine);
+    //combine
+    vec3 texel = vec3(texture(diffuse_tex, uv));
+    vec3 spexel = vec3(texture(specular_tex, uv));
+
+    vec3 ambient = light.ambient * texel;
+    vec3 diffuse = light.diffuse * diff * texel;
+    vec3 specular = light.specular * spec * spexel;
+    
+    return (ambient + diffuse + specular);
+}
+
+vec3 calc_point_light(point_light_t light, vec3 normal, vec3 fragpos, vec3 viewdir) {
+    vec3 lightdir = normalize(light.position - fragpos);
+    //diffuse
+    float diff = max(dot(normal, lightdir), 0.0);
+    //specular
+    vec3 reflectdir = reflect(-lightdir, normal);
+    float spec = pow(max(dot(viewdir, reflectdir), 0.0), matshine);
+    //attenuation
+    float distance = length(light.position - fragpos);
+    float attenuation = 1.0 / (light.constant + light.linear * distance +
+                               light.quadratic * (distance * distance));
+
+    //combine
+    vec3 texel = vec3(texture(diffuse_tex, uv));
+    vec3 spexel = vec3(texture(specular_tex, uv));
+
+    vec3 ambient = light.ambient * texel;
+    vec3 diffuse = light.diffuse * diff * texel;
+    vec3 specular = light.specular * spec * spexel;
+
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+
+    return (ambient + diffuse + specular);
+}
+
+vec3 calc_spot_light(spot_light_t light, vec3 normal, vec3 fragpos, vec3 viewdir) {
+    vec3 lightdir = normalize(light.position - fragpos);
+    //diffuse
+    float diff = max(dot(normal, lightdir), 0.0);
+    //specular
+    vec3 reflectdir = reflect(-lightdir, normal);
+    float spec = pow(max(dot(viewdir, reflectdir), 0.0), matshine);
+    //attenuation
+    float distance = length(light.position - fragpos);
+    float attenuation = 1.0 / (light.constant + light.linear * distance +
+                               light.quadratic * (distance * distance));
+
+    // spotlight intensity
+    float theta = dot(lightdir, normalize(-light.direction));
+    float epsilon = light.cutoff - light.outcutoff;
+    float intensity = clamp((theta - light.outcutoff) / epsilon, 0.0, 1.0);
+
+    //combine
+    vec3 texel = vec3(texture(diffuse_tex, uv));
+    vec3 spexel = vec3(texture(specular_tex, uv));
+    vec3 ambient = light.ambient * texel;
+    vec3 diffuse = light.diffuse * diff * texel;
+    vec3 specular = light.specular * spec * spexel;
+
+    ambient *= attenuation * intensity;
+    diffuse *= attenuation * intensity;
+    specular *= attenuation * intensity;
+
+    return (ambient + diffuse + specular);
+}
+
 @end
 
 @program comboshader vs fs

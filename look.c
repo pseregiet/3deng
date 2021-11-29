@@ -91,19 +91,26 @@ static int sdl_init()
 }
 
 hmm_vec3 cubespos[10] = {
-   (hmm_vec3){.X= 1.0f,.Y=  1.0f,.Z=  1.0f}, 
-   (hmm_vec3){.X= 2.0f,.Y=  5.0f,.Z= -15.0f}, 
-   (hmm_vec3){.X=-1.5f,.Y= -2.2f,.Z= -2.5f},  
-   (hmm_vec3){.X=-3.8f,.Y= -2.0f,.Z= -12.3f},  
-   (hmm_vec3){.X= 2.4f,.Y= -0.4f,.Z= -3.5f},  
-   (hmm_vec3){.X=-1.7f,.Y=  3.0f,.Z= -7.5f},  
-   (hmm_vec3){.X= 1.3f,.Y= -2.0f,.Z= -2.5f},  
-   (hmm_vec3){.X= 1.5f,.Y=  2.0f,.Z= -2.5f}, 
-   (hmm_vec3){.X= 1.5f,.Y=  0.2f,.Z= -1.5f}, 
-   (hmm_vec3){.X=-1.3f,.Y=  1.0f,.Z= -1.5f} 
+
+    {.X= 0.0f, .Y= 0.0f, .Z= 0.0f},
+    {.X= 2.0f, .Y= 5.0f, .Z=-15.0f},
+    {.X=-1.5f, .Y=-2.2f, .Z=-2.5f},
+    {.X=-3.8f, .Y=-2.0f, .Z=-12.3f},
+    {.X= 2.4f, .Y=-0.4f, .Z=-3.5f},
+    {.X=-1.7f, .Y= 3.0f, .Z=-7.5f},
+    {.X= 1.3f, .Y=-2.0f, .Z=-2.5f},
+    {.X= 1.5f, .Y= 2.0f, .Z=-2.5f},
+    {.X= 1.5f, .Y= 0.2f, .Z=-1.5f},
+    {.X=-1.3f, .Y= 1.0f, .Z=-1.5f},
+
 };
 
-
+hmm_vec4 lightspos[4] = {
+    {0.7f, 0.2f, 2.0f, 1.0f},
+    {2.3f, -3.3f, -4.0f, 1.0f},
+    {-4.0f, 2.0f, 12.0f, 1.0f},
+    {0.0f, 0.0f, -3.0f, 1.0f}
+};
 
 static int load_sg_image(const char *fn, sg_image *img)
 {
@@ -301,24 +308,53 @@ int main(int argc, char **argv)
         //fs uniforms
         fs_params_t fs_params = {
             .viewpos = cam.pos,
+            .matshine = 32.0f,
         };
-
         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_params, &SG_RANGE(fs_params));
 
-        fs_material_t fs_material = {
-            .shine = 32.0f,
+        fs_dir_light_t fs_dir_light = {
+            .direction = HMM_Vec3(-0.2f, -1.0f, -0.3f),
+            .ambient = HMM_Vec3(0.05f, 0.05f, 0.05f),
+            .diffuse = HMM_Vec3(0.4f, 0.4f, 0.4f),
+            .specular = HMM_Vec3(0.5f, 0.5f, 0.5f)
         };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_dir_light, &SG_RANGE(fs_dir_light));
 
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_material, &SG_RANGE(fs_material));
-
-        fs_light_t fs_light = {
-            .position = lightpos,
-            .ambient = HMM_Vec3(0.2f, 0.2f, 0.2f),
-            .diffuse = HMM_Vec3(0.5f, 0.5f, 0.5f),
-            .specular = HMM_Vec3(1.0f, 1.0f, 1.0f),
+        fs_point_lights_t fs_point_lights = {
+            .position[0]    = lightspos[0],
+            .ambient[0]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
+            .diffuse[0]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
+            .specular[0]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
+            .attenuation[0] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f),
+            .position[1]    = lightspos[1],
+            .ambient[1]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
+            .diffuse[1]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
+            .specular[1]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
+            .attenuation[1] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f),
+            .position[2]    = lightspos[2],
+            .ambient[2]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
+            .diffuse[2]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
+            .specular[2]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
+            .attenuation[2] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f),
+            .position[3]    = lightspos[3],
+            .ambient[3]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
+            .diffuse[3]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
+            .specular[3]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
+            .attenuation[3] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f)
         };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_point_lights, &SG_RANGE(fs_point_lights));
 
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_light, &SG_RANGE(fs_light));
+        fs_spot_light_t fs_spot_light = {
+            .position = cam.pos,
+            .direction = cam.front,//HMM_AddVec3(cam.pos, cam.front),
+            .cutoff = HMM_COSF(HMM_ToRadians(12.5f)),//cosf(12.5f),
+            .outcutoff = HMM_COSF(HMM_ToRadians(15.0f)),//cosf(15.0f),
+            .attenuation = HMM_Vec3(1.0f, 0.09f, 0.032f),
+            .ambient = HMM_Vec3(0.0f, 0.0f, 0.0f),
+            .diffuse = HMM_Vec3(1.0f, 1.0f, 1.0f),
+            .specular = HMM_Vec3(1.0f, 1.0f, 1.0f)
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_spot_light, &SG_RANGE(fs_spot_light));
 
         hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
 
@@ -341,10 +377,20 @@ int main(int argc, char **argv)
             .view = view,
             .projection = projection,
         };
-        lvs.model = HMM_Translate(lightpos);
-        lvs.model = HMM_MultiplyMat4(lvs.model, HMM_Scale(HMM_Vec3(0.2f, 0.2f, 0.2f)));
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_params, &SG_RANGE(lvs));
-        sg_draw(0, 36, 1);
+
+        hmm_mat4 scale = HMM_Scale(HMM_Vec3(0.2f, 0.2f, 0.2f));
+        for (int i = 0; i < 4; ++i) {
+            hmm_vec3 pos = {
+                lightspos[i].X,
+                lightspos[i].Y,
+                lightspos[i].Z
+            };
+            lvs.model = HMM_Translate(pos);
+            lvs.model = HMM_MultiplyMat4(lvs.model, scale);
+
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_params, &SG_RANGE(lvs));
+            sg_draw(0, 36, 1);
+        }
 
         sg_end_pass();
         sg_commit();

@@ -63,7 +63,6 @@ static void rot_camera(int mx, int my)
     else if (cam.pitch < -0.99)
         cam.pitch = -0.99;
 
-    printf("%f, %f\n", cam.pitch, cam.yaw);
     hmm_vec3 dir = HMM_Vec3(cosf(cam.yaw) * cosf(cam.pitch),
                             sinf(cam.pitch),
                             sinf(cam.yaw) * cosf(cam.pitch));
