@@ -82,6 +82,8 @@ static int sdl_init()
         return -1;
     }
 
+    SDL_GL_SetSwapInterval(0);
+
     igsdl2_Init();
 
     gquit = 0;
@@ -157,12 +159,8 @@ static void do_imgui_frame(int w, int h, double delta)
     igText("Useful text");
     igText("Hello World!");
     igSliderFloat("float", &f, 0.0f, 1.0f, "%.3f", 1.0f);
-    //igText("App average %.3f ms/frame (%.1f FPS)", 1000.0f / igGetIO()->Framerate, igGetIO->Framerate);
+    igText("App average %.3f ms/frame (%.1f FPS)", delta, 1000.0f / delta);
     igEnd();
-
-    igSetNextWindowPos((ImVec2){460, 20}, ImGuiCond_FirstUseEver, (ImVec2){0,0});
-    igShowDemoWindow(0);
-
 }
 
 static void do_frame(struct frameinfo *fi, double delta)
