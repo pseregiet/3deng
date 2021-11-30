@@ -117,7 +117,7 @@ static int load_sg_image(const char *fn, sg_image *img)
 {
     int w,h,n;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *data = stbi_load(fn, &w, &h, &n, 0);
+    unsigned char *data = stbi_load(fn, &w, &h, &n, 4);
     if (!data) {
         fatalerror("stbi_load(%s) failed\n", fn);
         return -1;
@@ -129,26 +129,41 @@ static int load_sg_image(const char *fn, sg_image *img)
         .width = w,
         .height = h,
         .pixel_format = SG_PIXELFORMAT_RGBA8,
-        .min_filter = SG_FILTER_NEAREST,
+        .min_filter = SG_FILTER_LINEAR,
         .mag_filter = SG_FILTER_NEAREST,
         .data.subimage[0][0] = {
             .ptr = data,
-            .size = (w*h*n),
+            .size = (w*h*4),
         },
     });
 
     stbi_image_free(data);
 }
 
+static inline float bits2float(const bool *bits)
+{
+    uint32_t in = 0;
+
+    for (int i = 0; i < 32; ++i)
+        if (bits[i])
+            in |= (1 << i);
+
+    return (float)in;
+}
+
 struct frameinfo {
     sg_pipeline mainpip;
     sg_bindings mainbind;
+
+    sg_bindings grassbind;
 
     sg_pipeline lightpip;
     sg_bindings lightbind;
 
     sg_pass_action pass_action;
-};
+
+    bool lightsenable[32];
+} fi;
 
 hmm_vec3 dirlight_diff = {0.4f, 0.4f, 0.4f};
 hmm_vec3 dirlight_ambi = {0.05f, 0.05f, 0.05f};
@@ -164,6 +179,12 @@ static void do_imgui_frame(int w, int h, double delta)
     igText("Camera dir: %f, %f, %f", cam.front.X, cam.front.Y, cam.front.Z);
     igColorEdit3("directional light diffuse", dirlight_diff.Elements, ImGuiColorEditFlags_DefaultOptions_);
     igColorEdit3("directional light ambient", dirlight_ambi.Elements, ImGuiColorEditFlags_DefaultOptions_);
+
+    igCheckbox("Light enable1", &fi.lightsenable[0]);
+    igCheckbox("Light enable2", &fi.lightsenable[1]);
+    igCheckbox("Light enable3", &fi.lightsenable[2]);
+    igCheckbox("Light enable4", &fi.lightsenable[3]);
+
     igText("App average %.3f ms/frame (%.1f FPS)", delta, 1000.0f / delta);
     igEnd();
 }
@@ -180,7 +201,7 @@ static void do_frame(struct frameinfo *fi, double delta)
 
     sg_begin_default_pass(&fi->pass_action, w, h);
     sg_apply_pipeline(fi->mainpip);
-    sg_apply_bindings(&fi->mainbind);
+    sg_apply_bindings(&fi->grassbind);
 
     //fs uniforms
     fs_params_t fs_params = {
@@ -217,7 +238,8 @@ static void do_frame(struct frameinfo *fi, double delta)
         .ambient[3]     = HMM_Vec4(0.05f, 0.05f, 0.05f, 0.0f),
         .diffuse[3]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
         .specular[3]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
-        .attenuation[3] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f)
+        .attenuation[3] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f),
+        .enabled = bits2float(&fi->lightsenable),
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_point_lights, &SG_RANGE(fs_point_lights));
 
@@ -235,14 +257,19 @@ static void do_frame(struct frameinfo *fi, double delta)
 
     hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
 
+    hmm_mat4 model = HMM_Translate(HMM_Vec3(0.0, -5.0f, 0.0));
+    vs_params_t munis = {
+        .model = model,
+        .view = view,
+        .projection = projection,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
+    sg_draw(0, 6, 1);
+
+    sg_apply_bindings(&fi->mainbind);
     for (int i = 0; i < 10; ++i) {
-        hmm_mat4 model = HMM_Translate(cubespos[i]);
-        model = HMM_MultiplyMat4(model, HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f)));
-        vs_params_t munis = {
-            .model = model,
-            .view = view,
-            .projection = projection,
-        };
+        munis.model = HMM_Translate(cubespos[i]);
+        munis.model = HMM_MultiplyMat4(munis.model, HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f)));
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
 
         sg_draw(0, 36, 1);
@@ -257,6 +284,10 @@ static void do_frame(struct frameinfo *fi, double delta)
 
     hmm_mat4 scale = HMM_Scale(HMM_Vec3(0.2f, 0.2f, 0.2f));
     for (int i = 0; i < 4; ++i) {
+
+        if (!fi->lightsenable[i])
+            continue;
+
         hmm_vec3 pos = {
             lightspos[i].X,
             lightspos[i].Y,
@@ -284,7 +315,6 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    struct frameinfo fi;
 
     float vertices[] = {
         // positions          // normals           // texture coords
@@ -395,6 +425,43 @@ int main(int argc, char **argv)
         //.index_buffer = ibuf,
         .fs_images[SLOT_diffuse_tex] = img,
         .fs_images[SLOT_specular_tex] = img2,
+    };
+
+    //================================================================
+    sg_image grassimg1;
+    sg_image grassimg2;
+    if (load_sg_image("Seamless_golf_green_grass_texture.jpg", &grassimg1)) {
+        fatalerror("cannot load image\n");
+        return -1;
+    }
+
+    if (load_sg_image("Seamless_golf_green_grass_texture_SPECULAR.jpg", &grassimg2)) {
+        fatalerror("cannot load image\n");
+        return -1;
+    }
+
+
+
+    float grass_vertices[] = {
+        // positions         // normals      // texcoords
+         25.f, -.5f,  25.f,  0.f, 1.f, 0.f,  25.f,  0.f,
+        -25.f, -.5f,  25.f,  0.f, 1.f, 0.f,   0.f,  0.f,
+        -25.f, -.5f, -25.f,  0.f, 1.f, 0.f,   0.f, 25.f,
+
+         25.f, -.5f,  25.f,  0.f, 1.f, 0.f,  25.f,  0.f,
+        -25.f, -.5f, -25.f,  0.f, 1.f, 0.f,   0.f, 25.f,
+         25.f, -.5f, -25.f,  0.f, 1.f, 0.f,  25.f, 25.f
+    };
+    
+    sg_buffer grassvbuf = sg_make_buffer(&(sg_buffer_desc) {
+        .data.size = sizeof(grass_vertices),
+        .data.ptr = grass_vertices,
+    });
+
+    fi.grassbind = (sg_bindings){
+        .vertex_buffers[0] = grassvbuf,
+        .fs_images[SLOT_diffuse_tex] = grassimg1,
+        .fs_images[SLOT_specular_tex] = grassimg2,
     };
     
     fi.lightpip = sg_make_pipeline(&(sg_pipeline_desc) {

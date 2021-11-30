@@ -52,6 +52,7 @@ uniform fs_point_lights {
     vec4 diffuse[NR_POINT_LIGHTS];
     vec4 specular[NR_POINT_LIGHTS];
     vec4 attenuation[NR_POINT_LIGHTS];
+    float enabled;
 } point_lights;
 
 uniform fs_spot_light {
@@ -115,9 +116,17 @@ void main() {
     vec3 result = calc_dir_light(get_directional_light(), norm, viewdir);
     
     //phase 2: point lights
+    int enb = int(point_lights.enabled);
+    for (int i = 0; i < NR_POINT_LIGHTS; ++i) {
+        if ((enb & (1 << i)) != 0)
+            result += calc_point_light(get_point_light(i), norm, fragpos, viewdir);
+    }
+
+    /*
     for (int i = 0; i < NR_POINT_LIGHTS; ++i) {
         result += calc_point_light(get_point_light(i), norm, fragpos, viewdir);
     }
+    */
 
     //phase 3: spot light
     result += calc_spot_light(get_spot_light(), norm, fragpos, viewdir);
