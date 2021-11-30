@@ -150,6 +150,9 @@ struct frameinfo {
     sg_pass_action pass_action;
 };
 
+hmm_vec3 dirlight_diff = {0.4f, 0.4f, 0.4f};
+hmm_vec3 dirlight_ambi = {0.05f, 0.05f, 0.05f};
+
 static void do_imgui_frame(int w, int h, double delta)
 {
     simgui_new_frame(w, h, delta);
@@ -159,7 +162,8 @@ static void do_imgui_frame(int w, int h, double delta)
 
     igText("Camera pos: %f, %f, %f", cam.pos.X, cam.pos.Y, cam.pos.Z);
     igText("Camera dir: %f, %f, %f", cam.front.X, cam.front.Y, cam.front.Z);
-    igSliderFloat("float", &f, 0.0f, 1.0f, "%.3f", 1.0f);
+    igColorEdit3("directional light diffuse", dirlight_diff.Elements, ImGuiColorEditFlags_DefaultOptions_);
+    igColorEdit3("directional light ambient", dirlight_ambi.Elements, ImGuiColorEditFlags_DefaultOptions_);
     igText("App average %.3f ms/frame (%.1f FPS)", delta, 1000.0f / delta);
     igEnd();
 }
@@ -187,8 +191,8 @@ static void do_frame(struct frameinfo *fi, double delta)
 
     fs_dir_light_t fs_dir_light = {
         .direction = HMM_Vec3(-0.2f, -1.0f, -0.3f),
-        .ambient = HMM_Vec3(0.05f, 0.05f, 0.05f),
-        .diffuse = HMM_Vec3(0.4f, 0.4f, 0.4f),
+        .ambient = dirlight_ambi,
+        .diffuse = dirlight_diff,
         .specular = HMM_Vec3(0.5f, 0.5f, 0.5f)
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_dir_light, &SG_RANGE(fs_dir_light));
