@@ -82,12 +82,15 @@ void do_input(double delta)
         }
 
         if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_BACKQUOTE) {
-            SDL_SetRelativeMouseMode(sdl.imguifocus);
-            sdl.imguifocus = !sdl.imguifocus;
+            sdl.imguifocus++;
+            if (sdl.imguifocus > 2)
+                sdl.imguifocus = 0;
 
+            bool lockmouse = sdl.imguifocus == 1 ? false : true;
+            SDL_SetRelativeMouseMode(lockmouse);
         }
 
-        if (sdl.imguifocus) {
+        if (sdl.imguifocus == 1) {
             igsdl2_ProcessEvent(&e);
             continue;
         }
@@ -110,7 +113,7 @@ void do_input(double delta)
         }
     }
 
-    if (sdl.imguifocus) {
+    if (sdl.imguifocus == 1) {
         igsdl2_UpdateMousePosAndButtons();
         igsdl2_UpdateMouseCursor();
         return;

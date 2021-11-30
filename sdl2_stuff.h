@@ -11,7 +11,7 @@ struct sdlobjs {
     SDL_Cursor *cursor[10*2];
     char *clipboard;
     bool mouse[3];
-    bool imguifocus;
+    char imguifocus;
 };
 
 #endif

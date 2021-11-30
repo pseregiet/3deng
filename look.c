@@ -156,8 +156,9 @@ static void do_imgui_frame(int w, int h, double delta)
     static float f = 0.0f;
 
     igBegin("Hello world! window", NULL, 0);
-    igText("Useful text");
-    igText("Hello World!");
+
+    igText("Camera pos: %f, %f, %f", cam.pos.X, cam.pos.Y, cam.pos.Z);
+    igText("Camera dir: %f, %f, %f", cam.front.X, cam.front.Y, cam.front.Z);
     igSliderFloat("float", &f, 0.0f, 1.0f, "%.3f", 1.0f);
     igText("App average %.3f ms/frame (%.1f FPS)", delta, 1000.0f / delta);
     igEnd();
