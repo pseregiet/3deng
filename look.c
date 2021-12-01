@@ -6,7 +6,6 @@
 
 #include <GL/gl.h>
 #include <SDL2/SDL.h>
-#include "stb_image.h"
 #include "hmm.h"
 
 #include <stdbool.h>
@@ -15,8 +14,8 @@
 #include <stdlib.h>
 
 #include "sdl2_stuff.h"
-#include "shaderloader.h"
 #include "event.h"
+#include "objloader.h"
 #include "genshader.h"
 #include "sdl2_imgui.h"
 
@@ -29,6 +28,7 @@
     printf(__VA_ARGS__);\
     exit(-1)
 
+sg_image imgdummy = {0};
 struct sdlobjs sdl = {0};
 
 bool gquit = 0;
@@ -37,7 +37,6 @@ struct matrix_unis {
     hmm_mat4 view;
     hmm_mat4 projection;
 };
-
 
 char vs[0x1000];
 char fs[0x1000];
@@ -113,33 +112,6 @@ hmm_vec4 lightspos[4] = {
     {0.0f, 0.0f, -3.0f, 1.0f}
 };
 
-static int load_sg_image(const char *fn, sg_image *img)
-{
-    int w,h,n;
-    stbi_set_flip_vertically_on_load(true);
-    unsigned char *data = stbi_load(fn, &w, &h, &n, 4);
-    if (!data) {
-        fatalerror("stbi_load(%s) failed\n", fn);
-        return -1;
-    }
-
-    printf("%d:%d:%d\n", w, h, n);
-
-    *img = sg_make_image(&(sg_image_desc) {
-        .width = w,
-        .height = h,
-        .pixel_format = SG_PIXELFORMAT_RGBA8,
-        .min_filter = SG_FILTER_LINEAR,
-        .mag_filter = SG_FILTER_NEAREST,
-        .data.subimage[0][0] = {
-            .ptr = data,
-            .size = (w*h*4),
-        },
-    });
-
-    stbi_image_free(data);
-}
-
 static inline float bits2float(const bool *bits)
 {
     uint32_t in = 0;
@@ -162,8 +134,10 @@ struct frameinfo {
 
     sg_pass_action pass_action;
 
+    struct model cat;
+
     bool lightsenable[32];
-} fi;
+} fi = {0};
 
 hmm_vec3 dirlight_diff = {0.4f, 0.4f, 0.4f};
 hmm_vec3 dirlight_ambi = {0.05f, 0.05f, 0.05f};
@@ -239,7 +213,7 @@ static void do_frame(struct frameinfo *fi, double delta)
         .diffuse[3]     = HMM_Vec4(0.8f, 0.8f, 0.8f, 0.0f),
         .specular[3]    = HMM_Vec4(1.0f, 1.0f, 1.0f, 0.0f),
         .attenuation[3] = HMM_Vec4(1.0f, 0.09f, 0.032f, 0.0f),
-        .enabled = bits2float(&fi->lightsenable),
+        .enabled = bits2float((bool *)&fi->lightsenable),
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_point_lights, &SG_RANGE(fs_point_lights));
 
@@ -267,12 +241,18 @@ static void do_frame(struct frameinfo *fi, double delta)
     sg_draw(0, 6, 1);
 
     sg_apply_bindings(&fi->mainbind);
+
+    hmm_mat4 scale = HMM_Scale(HMM_Vec3(0.5f, 0.5f, 0.5f));
+
     for (int i = 0; i < 10; ++i) {
-        munis.model = HMM_Translate(cubespos[i]);
-        munis.model = HMM_MultiplyMat4(munis.model, HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f)));
+        hmm_mat4 trans = HMM_Translate(cubespos[i]);
+        hmm_mat4 rotat =  HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f));
+        model = HMM_MultiplyMat4(trans, scale); 
+        munis.model = HMM_MultiplyMat4(model, rotat);
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
 
-        sg_draw(0, 36, 1);
+        //sg_draw(0, 36, 1);
+        sg_draw(0, fi->cat.vcount, 1);
     }
 
     sg_apply_pipeline(fi->lightpip);
@@ -282,7 +262,6 @@ static void do_frame(struct frameinfo *fi, double delta)
         .projection = projection,
     };
 
-    hmm_mat4 scale = HMM_Scale(HMM_Vec3(0.2f, 0.2f, 0.2f));
     for (int i = 0; i < 4; ++i) {
 
         if (!fi->lightsenable[i])
@@ -308,6 +287,23 @@ static void do_frame(struct frameinfo *fi, double delta)
     SDL_GL_SwapWindow(sdl.win);
 }
 
+static sg_image init_imgdummy()
+{
+    char data[4] = {0,0,0,0};
+
+    imgdummy = sg_make_image(&(sg_image_desc) {
+        .width = 1,
+        .height = 1,
+        .pixel_format = SG_PIXELFORMAT_RGBA8,
+        .min_filter = SG_FILTER_NEAREST,
+        .mag_filter = SG_FILTER_NEAREST,
+        .data.subimage[0][0] = {
+            .ptr = data,
+            .size = 4,
+        },
+    });
+}
+
 int main(int argc, char **argv)
 {
     if (sdl_init()) {
@@ -315,82 +311,12 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    init_imgdummy();
 
-    float vertices[] = {
-        // positions          // normals           // texture coords
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
-
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
-
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
-
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
-
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,
-
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f
-    };
-
-    sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc) {
-        .data.size = sizeof(vertices),
-        .data.ptr = vertices,
-    });
-    
-/*
-    u16 indices[] = {
-        0, 1, 2,
-        0, 2, 3
-    };
-
-    sg_buffer ibuf = sg_make_buffer(&(sg_buffer_desc) {
-        .data.size = sizeof(indices),
-        .data.ptr = indices,
-        .type = SG_BUFFERTYPE_INDEXBUFFER,
-    });
-*/
-
-    sg_image img;
-    sg_image img2;
-    if (load_sg_image("container2.png", &img)) {
-        fatalerror("cannot load image\n");
+    if (obj_load(&fi.cat, "trump/untitled-scene.obj")) {
+        fatalerror("couldn't load the fucking cat\n");
         return -1;
     }
-
-    if (load_sg_image("container2_specular.png", &img2)) {
-        fatalerror("cannot load image\n");
-        return -1;
-    }
-
 
     sg_shader shd = sg_make_shader(comboshader_shader_desc(SG_BACKEND_GLCORE33));
     sg_shader lightshd = sg_make_shader(light_cube_shader_desc(SG_BACKEND_GLCORE33));
@@ -418,14 +344,10 @@ int main(int argc, char **argv)
             .compare = SG_COMPAREFUNC_LESS_EQUAL,
             .write_enabled = true,
         },
+        //.cull_mode = SG_CULLMODE_FRONT,
     });
 
-    fi.mainbind = (sg_bindings){
-        .vertex_buffers[0] = vbuf,
-        //.index_buffer = ibuf,
-        .fs_images[SLOT_diffuse_tex] = img,
-        .fs_images[SLOT_specular_tex] = img2,
-    };
+    obj_bind(&fi.cat, &fi.mainbind);
 
     //================================================================
     sg_image grassimg1;
@@ -439,8 +361,6 @@ int main(int argc, char **argv)
         fatalerror("cannot load image\n");
         return -1;
     }
-
-
 
     float grass_vertices[] = {
         // positions         // normals      // texcoords
@@ -460,9 +380,61 @@ int main(int argc, char **argv)
 
     fi.grassbind = (sg_bindings){
         .vertex_buffers[0] = grassvbuf,
-        .fs_images[SLOT_diffuse_tex] = grassimg1,
-        .fs_images[SLOT_specular_tex] = grassimg2,
+        .fs_images[SLOT_imgdiff] = grassimg1,
+        .fs_images[SLOT_imgspec] = grassimg2,
+        //.fs_images[SLOT_imgbump] = imgdummy,
     };
+
+    float vertices[36*3] =
+    {
+        -0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f, 
+        0.5f,  0.5f, -0.5f, 
+        0.5f,  0.5f, -0.5f, 
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+
+        -0.5f, -0.5f,  0.5f,
+        0.5f, -0.5f,  0.5f, 
+        0.5f,  0.5f,  0.5f, 
+        0.5f,  0.5f,  0.5f, 
+        -0.5f,  0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+
+        0.5f,  0.5f,  0.5f, 
+        0.5f,  0.5f, -0.5f, 
+        0.5f, -0.5f, -0.5f, 
+        0.5f, -0.5f, -0.5f, 
+        0.5f, -0.5f,  0.5f, 
+        0.5f,  0.5f,  0.5f, 
+
+        -0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f, 
+        0.5f, -0.5f,  0.5f, 
+        0.5f, -0.5f,  0.5f, 
+        -0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f, -0.5f,
+
+        -0.5f,  0.5f, -0.5f,
+        0.5f,  0.5f, -0.5f, 
+        0.5f,  0.5f,  0.5f, 
+        0.5f,  0.5f,  0.5f, 
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
+
+    };
+
+    sg_buffer lvbuf = sg_make_buffer(&(sg_buffer_desc) {
+        .data.size = sizeof(vertices),
+        .data.ptr = vertices,
+    });
     
     fi.lightpip = sg_make_pipeline(&(sg_pipeline_desc) {
         .shader = lightshd,
@@ -480,7 +452,6 @@ int main(int argc, char **argv)
             .attrs = {
                 [ATTR_light_cube_vs_pos] = {.format = SG_VERTEXFORMAT_FLOAT3},
             },
-            .buffers[0].stride = 32,
         },
         .depth = {
             .compare = SG_COMPAREFUNC_LESS_EQUAL,
@@ -489,7 +460,7 @@ int main(int argc, char **argv)
     });
 
     fi.lightbind = (sg_bindings){
-        .vertex_buffers[0] = vbuf,
+        .vertex_buffers[0] = lvbuf,
     };
 
     fi.pass_action = (sg_pass_action){

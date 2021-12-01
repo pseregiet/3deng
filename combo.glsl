@@ -104,9 +104,9 @@ vec3 calc_dir_light(dir_light_t light, vec3 normal, vec3 viewdir);
 vec3 calc_point_light(point_light_t light, vec3 normal, vec3 fragpos, vec3 viewdir);
 vec3 calc_spot_light(spot_light_t light, vec3 normal, vec3 fragpos, vec3 viewdir);
 
-uniform sampler2D diffuse_tex;
-uniform sampler2D specular_tex;
-
+uniform sampler2D imgdiff;
+uniform sampler2D imgspec;
+uniform sampler2D imgbump;
 void main() {
     //properties
     vec3 norm = normalize(normalo);
@@ -178,8 +178,8 @@ vec3 calc_dir_light(dir_light_t light, vec3 normal, vec3 viewdir) {
     vec3 reflectdir = reflect(-lightdir, normal);
     float spec = pow(max(dot(viewdir, reflectdir), 0.0), matshine);
     //combine
-    vec3 texel = vec3(texture(diffuse_tex, uv));
-    vec3 spexel = vec3(texture(specular_tex, uv));
+    vec3 texel = vec3(texture(imgdiff, uv));
+    vec3 spexel = vec3(texture(imgspec, uv));
 
     vec3 ambient = light.ambient * texel;
     vec3 diffuse = light.diffuse * diff * texel;
@@ -201,8 +201,8 @@ vec3 calc_point_light(point_light_t light, vec3 normal, vec3 fragpos, vec3 viewd
                                light.quadratic * (distance * distance));
 
     //combine
-    vec3 texel = vec3(texture(diffuse_tex, uv));
-    vec3 spexel = vec3(texture(specular_tex, uv));
+    vec3 texel = vec3(texture(imgdiff, uv));
+    vec3 spexel = vec3(texture(imgspec, uv));
 
     vec3 ambient = light.ambient * texel;
     vec3 diffuse = light.diffuse * diff * texel;
@@ -233,8 +233,8 @@ vec3 calc_spot_light(spot_light_t light, vec3 normal, vec3 fragpos, vec3 viewdir
     float intensity = clamp((theta - light.outcutoff) / epsilon, 0.0, 1.0);
 
     //combine
-    vec3 texel = vec3(texture(diffuse_tex, uv));
-    vec3 spexel = vec3(texture(specular_tex, uv));
+    vec3 texel = vec3(texture(imgdiff, uv));
+    vec3 spexel = vec3(texture(imgspec, uv));
     vec3 ambient = light.ambient * texel;
     vec3 diffuse = light.diffuse * diff * texel;
     vec3 specular = light.specular * spec * spexel;
