@@ -16,6 +16,7 @@
 #include "sdl2_stuff.h"
 #include "event.h"
 #include "objloader.h"
+#include "mouse2world.h"
 #include "genshader.h"
 #include "sdl2_imgui.h"
 
@@ -81,7 +82,7 @@ static int sdl_init()
         return -1;
     }
 
-    SDL_GL_SetSwapInterval(0);
+    //SDL_GL_SetSwapInterval(0);
 
     igsdl2_Init();
 
@@ -93,7 +94,7 @@ static int sdl_init()
 hmm_vec3 cubespos[10] = {
 
     {.X= 0.0f, .Y= 0.0f, .Z= 0.0f},
-    {.X= 2.0f, .Y= 5.0f, .Z=-15.0f},
+    {.X= 12.0f, .Y= 5.0f, .Z=-15.0f},
     {.X=-1.5f, .Y=-2.2f, .Z=-2.5f},
     {.X=-3.8f, .Y=-2.0f, .Z=-12.3f},
     {.X= 2.4f, .Y=-0.4f, .Z=-3.5f},
@@ -142,6 +143,8 @@ struct frameinfo {
 hmm_vec3 dirlight_diff = {0.4f, 0.4f, 0.4f};
 hmm_vec3 dirlight_ambi = {0.05f, 0.05f, 0.05f};
 
+struct m2world m2 = {0};
+
 static void do_imgui_frame(int w, int h, double delta)
 {
     simgui_new_frame(w, h, delta);
@@ -159,6 +162,21 @@ static void do_imgui_frame(int w, int h, double delta)
     igCheckbox("Light enable3", &fi.lightsenable[2]);
     igCheckbox("Light enable4", &fi.lightsenable[3]);
 
+
+    hmm_vec3 mray = mouse2ray(&m2);
+    hmm_vec3 targ = cam.pos;
+    while (true) {
+        hmm_vec3 tmp = HMM_MultiplyVec3f(mray, 2.0f);
+        targ = HMM_AddVec3(tmp, targ);
+        printf("%f\n", targ.Y);
+
+        if (fabsf(targ.Y) > 5.0f)
+            break;
+    }
+
+    cubespos[9] = targ;
+    igText("mouse ray: %f, %f, %f", cubespos[9].X, cubespos[9].Y, cubespos[9].Z);
+
     igText("App average %.3f ms/frame (%.1f FPS)", delta, 1000.0f / delta);
     igEnd();
 }
@@ -170,9 +188,6 @@ static void do_frame(struct frameinfo *fi, double delta)
     int w, h;
     SDL_GL_GetDrawableSize(sdl.win, &w, &h);
     
-    if (sdl.imguifocus)
-        do_imgui_frame(w, h, delta);
-
     sg_begin_default_pass(&fi->pass_action, w, h);
     sg_apply_pipeline(fi->mainpip);
     sg_apply_bindings(&fi->grassbind);
@@ -230,21 +245,23 @@ static void do_frame(struct frameinfo *fi, double delta)
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_spot_light, &SG_RANGE(fs_spot_light));
 
     hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
+    hmm_mat4 vp = HMM_MultiplyMat4(projection, view);
 
     hmm_mat4 model = HMM_Translate(HMM_Vec3(0.0, -5.0f, 0.0));
     vs_params_t munis = {
         .model = model,
-        .view = view,
-        .projection = projection,
+        .vp = vp,
     };
     sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
     sg_draw(0, 6, 1);
 
     sg_apply_bindings(&fi->mainbind);
 
-    hmm_mat4 scale = HMM_Scale(HMM_Vec3(0.5f, 0.5f, 0.5f));
+    hmm_mat4 scale;
 
+    float ss = SDL_GetTicks() / 1000.f;
     for (int i = 0; i < 10; ++i) {
+        scale = HMM_Scale(HMM_Vec3(fabsf(sin(ss)),1.0 , 1.0));
         hmm_mat4 trans = HMM_Translate(cubespos[i]);
         hmm_mat4 rotat =  HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f));
         model = HMM_MultiplyMat4(trans, scale); 
@@ -257,11 +274,14 @@ static void do_frame(struct frameinfo *fi, double delta)
 
     sg_apply_pipeline(fi->lightpip);
     sg_apply_bindings(&fi->lightbind);
+    /*
     vs_params_t lvs = {
         .view = view,
         .projection = projection,
     };
+    */
 
+    scale = HMM_Scale(HMM_Vec3(0.1, 0.1, 0.1));
     for (int i = 0; i < 4; ++i) {
 
         if (!fi->lightsenable[i])
@@ -272,15 +292,25 @@ static void do_frame(struct frameinfo *fi, double delta)
             lightspos[i].Y,
             lightspos[i].Z
         };
-        lvs.model = HMM_Translate(pos);
-        lvs.model = HMM_MultiplyMat4(lvs.model, scale);
+        hmm_mat4 model = HMM_Translate(pos);
+        model = HMM_MultiplyMat4(model, scale);
+        model = HMM_MultiplyMat4(vp, model);
+        vs_paramsl_t lvs = {model};
 
         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_params, &SG_RANGE(lvs));
         sg_draw(0, 36, 1);
     }
 
-    if (sdl.imguifocus)
+    SDL_GetMouseState(&m2.mx, &m2.my);
+    m2.ww = WW;
+    m2.wh = WH;
+    m2.projection = projection;
+    m2.view = view;
+
+    if (sdl.imguifocus) {
+        do_imgui_frame(w, h, delta);
         simgui_render();
+    }
 
     sg_end_pass();
     sg_commit();

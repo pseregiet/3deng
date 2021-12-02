@@ -13,12 +13,13 @@ out vec2 uv;
 
 uniform vs_params {
     mat4 model;
-    mat4 view;
-    mat4 projection;
+    //mat4 view;
+    //mat4 projection;
+    mat4 vp;
 };
 
 void main() {
-   gl_Position = projection * view * model * vec4(position, 1.0);
+   gl_Position = vp * model * vec4(position, 1.0); //projection * view * model * vec4(position, 1.0);
    fragpos = vec3(model * vec4(position, 1.0));
    normalo = mat3(model) * normal;
    uv = texcoord;
@@ -254,14 +255,15 @@ vec3 calc_spot_light(spot_light_t light, vec3 normal, vec3 fragpos, vec3 viewdir
 @vs light_cube_vs
 in vec3 pos;
 
-uniform vs_params {
-    mat4 model;
-    mat4 view;
-    mat4 projection;
+uniform vs_paramsl {
+    //mat4 model;
+    //mat4 view;
+    //mat4 projection;
+    mat4 mvp;
 };
 
 void main() {
-    gl_Position = projection * view * model * vec4(pos, 1.0);
+    gl_Position = mvp * vec4(pos, 1.0);//projection * view * model * vec4(pos, 1.0);
 }
 @end
 
