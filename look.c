@@ -135,6 +135,9 @@ struct frameinfo {
 
     sg_pass_action pass_action;
 
+    sg_pipeline terrainpip;
+    sg_bindings terrainbind;
+
     struct model cat;
 
     bool lightsenable[32];
@@ -168,7 +171,6 @@ static void do_imgui_frame(int w, int h, double delta)
     while (true) {
         hmm_vec3 tmp = HMM_MultiplyVec3f(mray, 2.0f);
         targ = HMM_AddVec3(tmp, targ);
-        printf("%f\n", targ.Y);
 
         if (fabsf(targ.Y) > 5.0f)
             break;
@@ -181,6 +183,92 @@ static void do_imgui_frame(int w, int h, double delta)
     igEnd();
 }
 
+static int init_terrain()
+{
+    char *files[] = {
+        "terraintex/grass_autumn_orn_d.jpg",
+        "terraintex/desert_mud_d.jpg",
+        "terraintex/adesert_sand2_d.jpg",
+    };
+    sg_image img1;
+    sg_image img2;
+
+    if (load_sg_image_array(files, &img1, 3)) {
+        fatalerror("can't load terrain textures\n");
+        return -1;
+    }
+
+    if (load_sg_image("terraintex/blend.png", &img2)) {
+        fatalerror("can't load terrain blend\n");
+        return -1;
+    }
+
+    float grass_vertices[] = {
+        // positions         // normals      // texcoords
+         25.f, -.5f,  25.f,  0.f, 1.f, 0.f,  1.0f, 0.0f,//25.f,  0.f,
+        -25.f, -.5f,  25.f,  0.f, 1.f, 0.f,  0.0f, 0.0f,// 0.f,  0.f,
+        -25.f, -.5f, -25.f,  0.f, 1.f, 0.f,  0.0f, 1.0f,// 0.f, 25.f,
+                                             //
+         25.f, -.5f,  25.f,  0.f, 1.f, 0.f,  1.0f, 0.0f,//25.f,  0.f,
+        -25.f, -.5f, -25.f,  0.f, 1.f, 0.f,  0.0f, 1.0f,// 0.f, 25.f,
+         25.f, -.5f, -25.f,  0.f, 1.f, 0.f,  1.0f, 1.0f,//25.f, 25.f
+    };
+    
+    sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc) {
+        .data.size = sizeof(grass_vertices),
+        .data.ptr = grass_vertices,
+    });
+
+    fi.terrainbind = (sg_bindings){
+        .vertex_buffers[0] = vbuf,
+        .fs_images[SLOT_imggfx] = img1,
+        .fs_images[SLOT_imgblend] = img2,
+    };
+    
+    sg_shader terrainshd = sg_make_shader(terrainshd_shader_desc(SG_BACKEND_GLCORE33));
+
+    fi.terrainpip = sg_make_pipeline(&(sg_pipeline_desc) {
+        .shader = terrainshd,
+        .color_count = 1,
+        .colors[0] = {
+            .write_mask = SG_COLORMASK_RGB,
+            .blend = {
+                .enabled = true,
+                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+            },
+        },
+        //.index_type = SG_INDEXTYPE_UINT16,
+        .layout = {
+            .attrs = {
+                [ATTR_terrain_vs_position] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_terrain_vs_normal] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_terrain_vs_texcoord] = {.format = SG_VERTEXFORMAT_FLOAT2},
+            },
+        },
+        .depth = {
+            .compare = SG_COMPAREFUNC_LESS_EQUAL,
+            .write_enabled = true,
+        },
+        //.cull_mode = SG_CULLMODE_FRONT,
+    });
+
+    return 0;
+}
+
+static void draw_terrain(struct frameinfo *fi, hmm_mat4 vp, hmm_mat4 model)
+{
+    sg_apply_pipeline(fi->terrainpip);
+    sg_apply_bindings(&fi->terrainbind);
+
+    vs_params_t munis = {
+        .model = model,
+        .vp = vp,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
+    sg_draw(0, 6, 1);
+}
+
 static void do_frame(struct frameinfo *fi, double delta)
 {
     hmm_mat4 projection = HMM_Perspective(45.0f, (float)WW/(float)WH, 0.1f, 100.0f);
@@ -189,8 +277,20 @@ static void do_frame(struct frameinfo *fi, double delta)
     SDL_GL_GetDrawableSize(sdl.win, &w, &h);
     
     sg_begin_default_pass(&fi->pass_action, w, h);
+    
+    hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
+    hmm_mat4 vp = HMM_MultiplyMat4(projection, view);
+
+    hmm_mat4 model = HMM_Translate(HMM_Vec3(0.0, -5.0f, 0.0));
+    vs_params_t munis = {
+        .model = model,
+        .vp = vp,
+    };
+    
+    draw_terrain(fi, vp, model);
+    
     sg_apply_pipeline(fi->mainpip);
-    sg_apply_bindings(&fi->grassbind);
+    //sg_apply_bindings(&fi->grassbind);
 
     //fs uniforms
     fs_params_t fs_params = {
@@ -244,23 +344,15 @@ static void do_frame(struct frameinfo *fi, double delta)
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_spot_light, &SG_RANGE(fs_spot_light));
 
-    hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
-    hmm_mat4 vp = HMM_MultiplyMat4(projection, view);
-
-    hmm_mat4 model = HMM_Translate(HMM_Vec3(0.0, -5.0f, 0.0));
-    vs_params_t munis = {
-        .model = model,
-        .vp = vp,
-    };
-    sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
-    sg_draw(0, 6, 1);
+    //sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
+    //sg_draw(0, 6, 1);
 
     sg_apply_bindings(&fi->mainbind);
 
     hmm_mat4 scale;
 
     float ss = SDL_GetTicks() / 1000.f;
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 9; ++i) {
         scale = HMM_Scale(HMM_Vec3(fabsf(sin(ss)),1.0 , 1.0));
         hmm_mat4 trans = HMM_Translate(cubespos[i]);
         hmm_mat4 rotat =  HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f));
@@ -268,8 +360,17 @@ static void do_frame(struct frameinfo *fi, double delta)
         munis.model = HMM_MultiplyMat4(model, rotat);
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
 
-        //sg_draw(0, 36, 1);
         sg_draw(0, fi->cat.vcount, 1);
+    }
+    {
+        scale = HMM_Scale(HMM_Vec3(1.0f, 1.0f , 1.0f));
+        hmm_mat4 trans = HMM_Translate(cubespos[9]);
+        model = HMM_MultiplyMat4(trans, scale); 
+        munis.model = model;
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
+
+        sg_draw(0, fi->cat.vcount, 1);
+
     }
 
     sg_apply_pipeline(fi->lightpip);
@@ -496,6 +597,8 @@ int main(int argc, char **argv)
     fi.pass_action = (sg_pass_action){
         .colors[0] = {.action = SG_ACTION_CLEAR, .value = {0.0, 0.0, 0.0, 1.0 }},
     };
+
+    init_terrain();
 
 
     uint64_t now = SDL_GetPerformanceCounter();

@@ -13,6 +13,7 @@ struct model {
 };
 
 int load_sg_image(const char *fn, sg_image *img);
+int load_sg_image_array(const char **fn, sg_image *img, int count);
 int obj_load(struct model *model, const char *fn);
 void obj_bind(struct model *model, sg_bindings *bind);
 
