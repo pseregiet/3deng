@@ -14,8 +14,10 @@
 #include <stdlib.h>
 
 #include "sdl2_stuff.h"
+#include "frameinfo.h"
 #include "event.h"
 #include "objloader.h"
+#include "terrain.h"
 #include "mouse2world.h"
 #include "genshader.h"
 #include "sdl2_imgui.h"
@@ -124,27 +126,11 @@ static inline float bits2float(const bool *bits)
     return (float)in;
 }
 
-struct frameinfo {
-    sg_pipeline mainpip;
-    sg_bindings mainbind;
-
-    sg_bindings grassbind;
-
-    sg_pipeline lightpip;
-    sg_bindings lightbind;
-
-    sg_pass_action pass_action;
-
-    sg_pipeline terrainpip;
-    sg_bindings terrainbind;
-
-    struct model cat;
-
-    bool lightsenable[32];
-} fi = {0};
+struct frameinfo fi = {0};
 
 hmm_vec3 dirlight_diff = {0.4f, 0.4f, 0.4f};
 hmm_vec3 dirlight_ambi = {0.05f, 0.05f, 0.05f};
+hmm_vec3 ldir = {0.5f, 1.0f, 0.3f};
 
 struct m2world m2 = {0};
 
@@ -157,6 +143,7 @@ static void do_imgui_frame(int w, int h, double delta)
 
     igText("Camera pos: %f, %f, %f", cam.pos.X, cam.pos.Y, cam.pos.Z);
     igText("Camera dir: %f, %f, %f", cam.front.X, cam.front.Y, cam.front.Z);
+    igText("Light dir: %f, %f, %f", ldir.X, ldir.Y, ldir.Z);
     igColorEdit3("directional light diffuse", dirlight_diff.Elements, ImGuiColorEditFlags_DefaultOptions_);
     igColorEdit3("directional light ambient", dirlight_ambi.Elements, ImGuiColorEditFlags_DefaultOptions_);
 
@@ -165,6 +152,9 @@ static void do_imgui_frame(int w, int h, double delta)
     igCheckbox("Light enable3", &fi.lightsenable[2]);
     igCheckbox("Light enable4", &fi.lightsenable[3]);
 
+    if (igButton("Set lightdir", (ImVec2) {100.0f, 100.0f})) {
+        ldir = cam.front;
+    }
 
     hmm_vec3 mray = mouse2ray(&m2);
     hmm_vec3 targ = cam.pos;
@@ -183,91 +173,6 @@ static void do_imgui_frame(int w, int h, double delta)
     igEnd();
 }
 
-static int init_terrain()
-{
-    char *files[] = {
-        "terraintex/grass_autumn_orn_d.jpg",
-        "terraintex/desert_mud_d.jpg",
-        "terraintex/adesert_sand2_d.jpg",
-    };
-    sg_image img1;
-    sg_image img2;
-
-    if (load_sg_image_array(files, &img1, 3)) {
-        fatalerror("can't load terrain textures\n");
-        return -1;
-    }
-
-    if (load_sg_image("terraintex/blend.png", &img2)) {
-        fatalerror("can't load terrain blend\n");
-        return -1;
-    }
-
-    float grass_vertices[] = {
-        // positions         // normals      // texcoords
-         25.f, -.5f,  25.f,  0.f, 1.f, 0.f,  1.0f, 0.0f,//25.f,  0.f,
-        -25.f, -.5f,  25.f,  0.f, 1.f, 0.f,  0.0f, 0.0f,// 0.f,  0.f,
-        -25.f, -.5f, -25.f,  0.f, 1.f, 0.f,  0.0f, 1.0f,// 0.f, 25.f,
-                                             //
-         25.f, -.5f,  25.f,  0.f, 1.f, 0.f,  1.0f, 0.0f,//25.f,  0.f,
-        -25.f, -.5f, -25.f,  0.f, 1.f, 0.f,  0.0f, 1.0f,// 0.f, 25.f,
-         25.f, -.5f, -25.f,  0.f, 1.f, 0.f,  1.0f, 1.0f,//25.f, 25.f
-    };
-    
-    sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc) {
-        .data.size = sizeof(grass_vertices),
-        .data.ptr = grass_vertices,
-    });
-
-    fi.terrainbind = (sg_bindings){
-        .vertex_buffers[0] = vbuf,
-        .fs_images[SLOT_imggfx] = img1,
-        .fs_images[SLOT_imgblend] = img2,
-    };
-    
-    sg_shader terrainshd = sg_make_shader(terrainshd_shader_desc(SG_BACKEND_GLCORE33));
-
-    fi.terrainpip = sg_make_pipeline(&(sg_pipeline_desc) {
-        .shader = terrainshd,
-        .color_count = 1,
-        .colors[0] = {
-            .write_mask = SG_COLORMASK_RGB,
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
-        },
-        //.index_type = SG_INDEXTYPE_UINT16,
-        .layout = {
-            .attrs = {
-                [ATTR_terrain_vs_position] = {.format = SG_VERTEXFORMAT_FLOAT3},
-                [ATTR_terrain_vs_normal] = {.format = SG_VERTEXFORMAT_FLOAT3},
-                [ATTR_terrain_vs_texcoord] = {.format = SG_VERTEXFORMAT_FLOAT2},
-            },
-        },
-        .depth = {
-            .compare = SG_COMPAREFUNC_LESS_EQUAL,
-            .write_enabled = true,
-        },
-        //.cull_mode = SG_CULLMODE_FRONT,
-    });
-
-    return 0;
-}
-
-static void draw_terrain(struct frameinfo *fi, hmm_mat4 vp, hmm_mat4 model)
-{
-    sg_apply_pipeline(fi->terrainpip);
-    sg_apply_bindings(&fi->terrainbind);
-
-    vs_params_t munis = {
-        .model = model,
-        .vp = vp,
-    };
-    sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
-    sg_draw(0, 6, 1);
-}
 
 static void do_frame(struct frameinfo *fi, double delta)
 {
@@ -286,8 +191,9 @@ static void do_frame(struct frameinfo *fi, double delta)
         .model = model,
         .vp = vp,
     };
+
     
-    draw_terrain(fi, vp, model);
+    draw_terrain(fi, vp, model, ldir, cam.pos);
     
     sg_apply_pipeline(fi->mainpip);
     //sg_apply_bindings(&fi->grassbind);
@@ -300,7 +206,7 @@ static void do_frame(struct frameinfo *fi, double delta)
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_params, &SG_RANGE(fs_params));
 
     fs_dir_light_t fs_dir_light = {
-        .direction = HMM_Vec3(-0.2f, -1.0f, -0.3f),
+        .direction = ldir,
         .ambient = dirlight_ambi,
         .diffuse = dirlight_diff,
         .specular = HMM_Vec3(0.5f, 0.5f, 0.5f)
@@ -353,11 +259,10 @@ static void do_frame(struct frameinfo *fi, double delta)
 
     float ss = SDL_GetTicks() / 1000.f;
     for (int i = 0; i < 9; ++i) {
-        scale = HMM_Scale(HMM_Vec3(fabsf(sin(ss)),1.0 , 1.0));
         hmm_mat4 trans = HMM_Translate(cubespos[i]);
         hmm_mat4 rotat =  HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f));
-        model = HMM_MultiplyMat4(trans, scale); 
-        munis.model = HMM_MultiplyMat4(model, rotat);
+        model = HMM_MultiplyMat4(trans, rotat); 
+        munis.model = model;
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
 
         sg_draw(0, fi->cat.vcount, 1);
@@ -479,42 +384,6 @@ int main(int argc, char **argv)
     });
 
     obj_bind(&fi.cat, &fi.mainbind);
-
-    //================================================================
-    sg_image grassimg1;
-    sg_image grassimg2;
-    if (load_sg_image("Seamless_golf_green_grass_texture.jpg", &grassimg1)) {
-        fatalerror("cannot load image\n");
-        return -1;
-    }
-
-    if (load_sg_image("Seamless_golf_green_grass_texture_SPECULAR.jpg", &grassimg2)) {
-        fatalerror("cannot load image\n");
-        return -1;
-    }
-
-    float grass_vertices[] = {
-        // positions         // normals      // texcoords
-         25.f, -.5f,  25.f,  0.f, 1.f, 0.f,  25.f,  0.f,
-        -25.f, -.5f,  25.f,  0.f, 1.f, 0.f,   0.f,  0.f,
-        -25.f, -.5f, -25.f,  0.f, 1.f, 0.f,   0.f, 25.f,
-
-         25.f, -.5f,  25.f,  0.f, 1.f, 0.f,  25.f,  0.f,
-        -25.f, -.5f, -25.f,  0.f, 1.f, 0.f,   0.f, 25.f,
-         25.f, -.5f, -25.f,  0.f, 1.f, 0.f,  25.f, 25.f
-    };
-    
-    sg_buffer grassvbuf = sg_make_buffer(&(sg_buffer_desc) {
-        .data.size = sizeof(grass_vertices),
-        .data.ptr = grass_vertices,
-    });
-
-    fi.grassbind = (sg_bindings){
-        .vertex_buffers[0] = grassvbuf,
-        .fs_images[SLOT_imgdiff] = grassimg1,
-        .fs_images[SLOT_imgspec] = grassimg2,
-        //.fs_images[SLOT_imgbump] = imgdummy,
-    };
 
     float vertices[36*3] =
     {
