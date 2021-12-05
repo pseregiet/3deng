@@ -39,7 +39,7 @@ mat3 transpose(mat3 mat) {
 
 void main() {
     inter.uv = auv;
-    mat3 normalmat = mat3(model);
+    mat3 normalmat = transpose(inverse(mat3(model)));
     vec3 T = normalize(normalmat * atang);
     vec3 N = normalize(normalmat * anorm);
     T = normalize(T - dot(T, N) * N);
@@ -88,9 +88,9 @@ void main() {
 
     pixnorm = normalize(pixnorm * 2.0 - 1.0);
 
-    vec3 ambient = vec3(0,0,0);//uambi * pixdiff;
+    vec3 ambient = uambi * pixdiff;
 
-    vec3 lightdir = normalize(-inter.tang_lightpos);// - inter.tang_fragpos);
+    vec3 lightdir = normalize(inter.tang_lightpos);// - inter.tang_fragpos);
     float diff = max(dot(pixnorm, lightdir), 0.0);
     vec3 diffuse = diff * pixdiff * udiff;
 

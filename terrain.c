@@ -134,7 +134,7 @@ int init_terrain()
             .compare = SG_COMPAREFUNC_LESS_EQUAL,
             .write_enabled = true,
         },
-        //.cull_mode = SG_CULLMODE_FRONT,
+        .cull_mode = SG_CULLMODE_BACK,
     });
 
     return 0;

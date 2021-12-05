@@ -21,7 +21,8 @@ uniform vs_params {
 void main() {
    gl_Position = vp * model * vec4(position, 1.0); //projection * view * model * vec4(position, 1.0);
    fragpos = vec3(model * vec4(position, 1.0));
-   normalo = mat3(model) * normal;
+   mat3 normalmat = transpose(inverse(mat3(model)));
+   normalo = normalmat * normal;
    uv = texcoord;
 }
 @end
