@@ -19,6 +19,7 @@ out INTERFACE {
 uniform vs_params {
     mat4 vp;
     mat4 model;
+    mat4 unormalmat;
     vec3 lightpos;
     vec3 viewpos;
 };
@@ -39,7 +40,8 @@ mat3 transpose(mat3 mat) {
 
 void main() {
     inter.uv = auv;
-    mat3 normalmat = transpose(inverse(mat3(model)));
+    //mat3 normalmat = transpose(inverse(mat3(model)));
+    mat3 normalmat = mat3(unormalmat);
     vec3 T = normalize(normalmat * atang);
     vec3 N = normalize(normalmat * anorm);
     T = normalize(T - dot(T, N) * N);
@@ -79,7 +81,6 @@ uniform sampler2DArray imgnorm;
 void main() {
     vec4 bl = texture(imgblend, inter.uv);
     float idx = bl.r * 256;
-
     vec3 vv = vec3(inter.uv.x*10, inter.uv.y*10, idx);
 
     vec3 pixdiff = texture(imgdiff, vv).rgb;
@@ -87,7 +88,6 @@ void main() {
     vec3 pixnorm = texture(imgnorm, vv).rgb;
 
     pixnorm = normalize(pixnorm * 2.0 - 1.0);
-
     vec3 ambient = uambi * pixdiff;
 
     vec3 lightdir = normalize(inter.tang_lightpos);// - inter.tang_fragpos);

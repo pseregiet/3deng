@@ -30,6 +30,7 @@ FILE="\
     stb_image.c \
     terrain.c \
     texloader.c \
+    extrahmm.c \
 "
 
 echo "Compile combo.glsl"

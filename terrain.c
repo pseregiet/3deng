@@ -2,6 +2,7 @@
 #include "texloader.h"
 #include "genshd_terrain.h"
 #include "hmm.h"
+#include "extrahmm.h"
 #include <stdio.h>
 #define fatalerror(...)\
     printf(__VA_ARGS__);\
@@ -151,10 +152,12 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp, hmm_mat4 model,
 
     hmm_mat4 rotat =  HMM_Rotate(90, HMM_Vec3(1.0f, 0.0f, 0.0f));
     model = HMM_MultiplyMat4(model, rotat);
+    hmm_mat4 normalmat = extrahmm_transpose_inverse_mat3(model);
     
     vs_params_t munis = {
         .vp = vp,
         .model = model,
+        .unormalmat = normalmat,
         .lightpos = lightpos,
         .viewpos = viewpos,
     };
