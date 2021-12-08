@@ -19,6 +19,7 @@
 #include "objloader.h"
 #include "terrain.h"
 #include "mouse2world.h"
+#include "shadow.h"
 #include "genshader.h"
 #include "sdl2_imgui.h"
 
@@ -30,6 +31,8 @@
 #define fatalerror(...)\
     printf(__VA_ARGS__);\
     exit(-1)
+
+extern struct frameshadow shadow;
 
 sg_image imgdummy = {0};
 struct sdlobjs sdl = {0};
@@ -52,6 +55,47 @@ struct camera cam = {
     .up = {0.0f, 1.0f, 0.0f},
     .dir = {0.0f, 0.0f, 0.0f},
 };
+
+struct frameinfo fi = {0};
+
+hmm_vec3 dirlight_diff = {0.4f, 0.4f, 0.4f};
+hmm_vec3 dirlight_ambi = {0.05f, 0.05f, 0.05f};
+hmm_vec3 ldir = {0.5f, 1.0f, 0.3f};
+
+struct m2world m2 = {0};
+
+hmm_vec3 cubespos[10] = {
+
+    {.X= 0.0f, .Y= 0.0f, .Z= 0.0f},
+    {.X= 12.0f, .Y= 5.0f, .Z=-15.0f},
+    {.X=-1.5f, .Y=-2.2f, .Z=-2.5f},
+    {.X=-3.8f, .Y=-2.0f, .Z=-12.3f},
+    {.X= 2.4f, .Y=-0.4f, .Z=-3.5f},
+    {.X=-1.7f, .Y= 3.0f, .Z=-7.5f},
+    {.X= 1.3f, .Y=-2.0f, .Z=-2.5f},
+    {.X= 1.5f, .Y= 2.0f, .Z=-2.5f},
+    {.X= 1.5f, .Y= 0.2f, .Z=-1.5f},
+    {.X=-1.3f, .Y= 1.0f, .Z=-1.5f},
+
+};
+
+hmm_vec4 lightspos[4] = {
+    {0.7f, 0.2f, 2.0f, 1.0f},
+    {2.3f, -3.3f, -4.0f, 1.0f},
+    {-4.0f, 2.0f, 12.0f, 1.0f},
+    {0.0f, 0.0f, -3.0f, 1.0f}
+};
+hmm_mat4 model_matrix[10];
+
+static void calc_models()
+{
+    float ss = SDL_GetTicks() / 1000.f;
+    for (int i = 0; i < 9; ++i) {
+        hmm_mat4 trans = HMM_Translate(cubespos[i]);
+        hmm_mat4 rotat =  HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f));
+        model_matrix[i] = HMM_MultiplyMat4(trans, rotat); 
+    }
+}
 
 static int sdl_init()
 {
@@ -93,28 +137,6 @@ static int sdl_init()
     return 0;
 }
 
-hmm_vec3 cubespos[10] = {
-
-    {.X= 0.0f, .Y= 0.0f, .Z= 0.0f},
-    {.X= 12.0f, .Y= 5.0f, .Z=-15.0f},
-    {.X=-1.5f, .Y=-2.2f, .Z=-2.5f},
-    {.X=-3.8f, .Y=-2.0f, .Z=-12.3f},
-    {.X= 2.4f, .Y=-0.4f, .Z=-3.5f},
-    {.X=-1.7f, .Y= 3.0f, .Z=-7.5f},
-    {.X= 1.3f, .Y=-2.0f, .Z=-2.5f},
-    {.X= 1.5f, .Y= 2.0f, .Z=-2.5f},
-    {.X= 1.5f, .Y= 0.2f, .Z=-1.5f},
-    {.X=-1.3f, .Y= 1.0f, .Z=-1.5f},
-
-};
-
-hmm_vec4 lightspos[4] = {
-    {0.7f, 0.2f, 2.0f, 1.0f},
-    {2.3f, -3.3f, -4.0f, 1.0f},
-    {-4.0f, 2.0f, 12.0f, 1.0f},
-    {0.0f, 0.0f, -3.0f, 1.0f}
-};
-
 static inline float bits2float(const bool *bits)
 {
     uint32_t in = 0;
@@ -126,13 +148,6 @@ static inline float bits2float(const bool *bits)
     return (float)in;
 }
 
-struct frameinfo fi = {0};
-
-hmm_vec3 dirlight_diff = {0.4f, 0.4f, 0.4f};
-hmm_vec3 dirlight_ambi = {0.05f, 0.05f, 0.05f};
-hmm_vec3 ldir = {0.5f, 1.0f, 0.3f};
-
-struct m2world m2 = {0};
 
 static void do_imgui_frame(int w, int h, double delta)
 {
@@ -154,11 +169,13 @@ static void do_imgui_frame(int w, int h, double delta)
 
     if (igButton("Set lightdir", (ImVec2) {100.0f, 100.0f})) {
         ldir = cam.front;
+        calc_lightmatrix();
     }
 
     hmm_vec3 mray = mouse2ray(&m2);
     hmm_vec3 targ = cam.pos;
-    while (true) {
+    int c = 0;
+    while (c++ < 100) {
         hmm_vec3 tmp = HMM_MultiplyVec3f(mray, 2.0f);
         targ = HMM_AddVec3(tmp, targ);
 
@@ -174,14 +191,20 @@ static void do_imgui_frame(int w, int h, double delta)
 }
 
 
+
 static void do_frame(struct frameinfo *fi, double delta)
 {
     hmm_mat4 projection = HMM_Perspective(45.0f, (float)WW/(float)WH, 0.1f, 100.0f);
 
     int w, h;
     SDL_GL_GetDrawableSize(sdl.win, &w, &h);
-    
+   
+    calc_models();
+    shadow_draw();
+    sg_end_pass();
+
     sg_begin_default_pass(&fi->pass_action, w, h);
+
     
     hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
     hmm_mat4 vp = HMM_MultiplyMat4(projection, view);
@@ -193,10 +216,8 @@ static void do_frame(struct frameinfo *fi, double delta)
     };
 
     
-    draw_terrain(fi, vp, model, ldir, cam.pos);
-    
+    draw_terrain(fi, vp, model, ldir, cam.pos, shadow.lightspace);
     sg_apply_pipeline(fi->mainpip);
-    //sg_apply_bindings(&fi->grassbind);
 
     //fs uniforms
     fs_params_t fs_params = {
@@ -250,19 +271,13 @@ static void do_frame(struct frameinfo *fi, double delta)
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_spot_light, &SG_RANGE(fs_spot_light));
 
-    //sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
-    //sg_draw(0, 6, 1);
-
     sg_apply_bindings(&fi->mainbind);
 
     hmm_mat4 scale;
 
     float ss = SDL_GetTicks() / 1000.f;
     for (int i = 0; i < 9; ++i) {
-        hmm_mat4 trans = HMM_Translate(cubespos[i]);
-        hmm_mat4 rotat =  HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f));
-        model = HMM_MultiplyMat4(trans, rotat); 
-        munis.model = model;
+        munis.model = model_matrix[i];
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
 
         sg_draw(0, fi->cat.vcount, 1);
@@ -280,13 +295,6 @@ static void do_frame(struct frameinfo *fi, double delta)
 
     sg_apply_pipeline(fi->lightpip);
     sg_apply_bindings(&fi->lightbind);
-    /*
-    vs_params_t lvs = {
-        .view = view,
-        .projection = projection,
-    };
-    */
-
     scale = HMM_Scale(HMM_Vec3(0.1, 0.1, 0.1));
     for (int i = 0; i < 4; ++i) {
 
@@ -380,7 +388,7 @@ int main(int argc, char **argv)
             .compare = SG_COMPAREFUNC_LESS_EQUAL,
             .write_enabled = true,
         },
-        //.cull_mode = SG_CULLMODE_FRONT,
+        .cull_mode = SG_CULLMODE_FRONT,
     });
 
     obj_bind(&fi.cat, &fi.mainbind);
@@ -468,7 +476,9 @@ int main(int argc, char **argv)
     };
 
     init_terrain();
-
+    fi.modelvbuf = fi.cat.buffer;
+    init_shadow();
+    terrain_set_shadowmap(shadow.colormap);
 
     uint64_t now = SDL_GetPerformanceCounter();
     uint64_t last = 0;

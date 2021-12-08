@@ -28,6 +28,7 @@ FILE="\
     sokol_gfx.c \
     sokol_imgui.c \
     stb_image.c \
+    shadow.c \
     terrain.c \
     texloader.c \
     extrahmm.c \

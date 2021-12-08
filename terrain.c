@@ -101,6 +101,8 @@ int init_terrain()
         .data.ptr = quad_vertices,
     });
 
+    fi.terrainvbuf = vbuf;
+
     fi.terrainbind = (sg_bindings){
         .vertex_buffers[0] = vbuf,
         .fs_images[SLOT_imgdiff] = imgd,
@@ -108,7 +110,7 @@ int init_terrain()
         .fs_images[SLOT_imgnorm] = imgn,
         .fs_images[SLOT_imgblend] = imgb,
     };
-    
+
     sg_shader terrainshd = sg_make_shader(terrainshd_shader_desc(SG_BACKEND_GLCORE33));
 
     fi.terrainpip = sg_make_pipeline(&(sg_pipeline_desc) {
@@ -141,11 +143,16 @@ int init_terrain()
     return 0;
 }
 
+void terrain_set_shadowmap(sg_image shadowmap)
+{
+    fi.terrainbind.fs_images[SLOT_shadowmap] = shadowmap;
+}
+
 extern hmm_vec3 dirlight_ambi;
 extern hmm_vec3 dirlight_diff;
-
+extern hmm_vec3 lipos;
 void draw_terrain(struct frameinfo *fi, hmm_mat4 vp, hmm_mat4 model,
-        hmm_vec3 lightpos, hmm_vec3 viewpos)
+        hmm_vec3 lightpos, hmm_vec3 viewpos, hmm_mat4 lightmatrix)
 {
     sg_apply_pipeline(fi->terrainpip);
     sg_apply_bindings(&fi->terrainbind);
@@ -159,15 +166,23 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp, hmm_mat4 model,
         .model = model,
         .unormalmat = normalmat,
         .lightpos = lightpos,
+        .lightpos_s = lipos,
         .viewpos = viewpos,
+        .lightspace_matrix = lightmatrix,
     };
     sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
     
     fs_params_t fsparm = {
         .uambi = dirlight_ambi,
         .udiff = dirlight_diff,
-        .uspec = HMM_Vec3(0.5f, 0.5f, 0.5f)
+        .uspec = HMM_Vec3(0.5f, 0.5f, 0.5f),
+        .shadowmap_size = HMM_Vec2(1024.0f, 1024.0f),
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &SG_RANGE(fsparm));
     sg_draw(0, 6, 1);
+}
+
+void draw_terrain4shadow(struct frameinfo *fi, hmm_mat4 vp, hmm_mat4 model)
+{
+
 }

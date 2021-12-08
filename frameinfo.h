@@ -7,6 +7,9 @@
 #include <stdbool.h>
 
 struct frameinfo {
+    sg_buffer terrainvbuf;
+    sg_buffer modelvbuf;
+
     sg_pipeline mainpip;
     sg_bindings mainbind;
 
