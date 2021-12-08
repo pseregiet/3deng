@@ -15,9 +15,9 @@ void calc_lightmatrix()
 {
     float near = -100.0f;
     float far = 100.0f;
-    hmm_vec3 lightpos = cam.pos;//{-ldir.X, -ldir.Y, -ldir.Z};
+    hmm_vec3 lightpos = cam.pos;
     hmm_mat4 lightproject = HMM_Orthographic(-50.f, 50.f, -50.f, 50.0f, near, far);
-    hmm_mat4 lightview = HMM_LookAt(lightpos, HMM_Vec3(0.0, 0.0, 0.0), HMM_Vec3(0.0f, 1.0f, 0.0f));
+    hmm_mat4 lightview = HMM_LookAt(lightpos, cam.dir, HMM_Vec3(0.0f, 1.0f, 0.0f));
     shadow.lightspace = HMM_MultiplyMat4(lightproject, lightview);
     lipos = lightpos;
 }
@@ -81,7 +81,7 @@ void init_shadow()
         .colors[0] = {
             //.write_mask = SG_COLORMASK_RGB
         },
-        //.cull_mode = SG_CULLMODE_FRONT,
+        .cull_mode = SG_CULLMODE_FRONT,
     });
 
     shadow.act = (sg_pass_action){

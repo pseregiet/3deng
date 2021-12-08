@@ -45,8 +45,8 @@ out INTERFACE {
     vec3 tang_viewpos;
     vec3 tang_fragpos;
     vec4 fragpos_lightspace;
-    vec3 normal;
-    vec3 lightdir;
+    //vec3 normal;
+    //vec3 lightdir;
 } inter;
 
 uniform vs_params {
@@ -82,11 +82,8 @@ void main() {
     vec3 B = cross(N, T);
 
     vec3 ssfragpos = vec3(model * vec4(apos, 1.0));
-    vec3 ssnormal = transpose(inverse(mat3(model))) * anorm;
     vec4 sslightfragpos = lightspace_matrix * vec4(ssfragpos, 1.0);
 
-    inter.normal = normalize(ssnormal);
-    inter.lightdir = normalize(lightpos_s - ssfragpos);
     inter.fragpos_lightspace = sslightfragpos;
 
     mat3 TBN = transpose(mat3(T, B, N));
@@ -94,7 +91,7 @@ void main() {
     inter.tang_viewpos = TBN * viewpos;
     inter.tang_fragpos = TBN * ssfragpos;
 
-    gl_Position = vp * vec4(ssfragpos, 1.0); //model * vec4(apos, 1.0);
+    gl_Position = vp * vec4(ssfragpos, 1.0);
 }
 @end
 
@@ -106,8 +103,6 @@ in INTERFACE {
     vec3 tang_viewpos;
     vec3 tang_fragpos;
     vec4 fragpos_lightspace;
-    vec3 normal;
-    vec3 lightdir;
 } inter;
 
 uniform fs_params { 
@@ -129,27 +124,23 @@ float decodedepth(vec4 rgba) {
     return dot(rgba, vec4(1.0, 1.0/255.0, 1.0/65025.0, 1.0/16581375.0));
 }
 
-float shadowcalc(vec4 fragpos_ls, vec3 normal, vec3 lightdir) {
+float shadowcalc(vec4 fragpos_ls) {
     vec3 projcoords = fragpos_ls.xyz / fragpos_ls.w;
     projcoords = projcoords * 0.5 + 0.5;
     float currdepth = projcoords.z;
-    float mapdepth = decodedepth(texture(shadowmap, projcoords.xy));
-    float shadow = currdepth > mapdepth ? 1.0 : 0.0;
     
-    /*
-    float bias = max(0.05 * (1.0 - dot(normal, lightdir)), 0.005);
+    //float bias = max(0.05 * (1.0 - dot(normal, lightdir)), 0.005);
 
     float shadow = 0.0;
     vec2 texelsize = 1.0 / shadowmap_size;
     for (int x = -1; x <= 1; ++x) {
         for (int y = -1; y <= 1; ++y) {
             float pcfdepth = decodedepth(texture(shadowmap, projcoords.xy + vec2(x,y) * texelsize));
-            shadow += currdepth - bias > pcfdepth ? 1.0 : 0.0;
+            shadow += currdepth /*- bias*/ > pcfdepth ? 1.0 : 0.0;
         }
     }
 
     shadow /= 9.0;
-    */
 
     if (projcoords.z > 1.0)
         shadow = 0.0;
@@ -180,11 +171,9 @@ void main() {
 
     vec3 specular = pixspec * spec * uspec;
 
-    float shadow = shadowcalc(inter.fragpos_lightspace, inter.normal, inter.lightdir);
+    float shadow = shadowcalc(inter.fragpos_lightspace);//, inter.normal, inter.lightdir);
     vec3 light = (ambient + (1.0 - shadow) * (diffuse + specular)) *  pixdiff;
     fragcolor = vec4(light, 1.0);
-
-    //fragcolor = vec4(ambient + diffuse + specular, 1.0);
 }
 @end
 
