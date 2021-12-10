@@ -29,17 +29,17 @@ static hmm_vec3 computeTangent(hmm_vec3 pos0, hmm_vec3 pos1, hmm_vec3 pos2, hmm_
 int init_terrain()
 {
     const char *filesd[] = {
-        "terraintex/grass_autumn_d.jpg",
+        "terraintex/grass_mix_d.jpg",
         "terraintex/mntn_dark_d.jpg",
         "terraintex/snow_mud_d.jpg",
     };
     const char *filess[] = {
-        "terraintex/grass_autumn_s.jpg",
+        "terraintex/grass_mix_s.jpg",
         "terraintex/mntn_dark_s.jpg",
         "terraintex/snow_mud_s.jpg",
     };
     const char *filesn[] = {
-        "terraintex/grass_autumn_n.jpg",
+        "terraintex/grass_mix_n.jpg",
         "terraintex/mntn_dark_n.jpg",
         "terraintex/snow_mud_n.jpg",
     };
@@ -147,8 +147,8 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         .shadowmap_size = HMM_Vec2(1024.0f, 1024.0f),
     };
 
-    float mx[2] = {0.0f, 300.0f};
-    float my[2] = {300.0f, 0.0f};
+    float mx[2] = {0.0f, 100.0f};
+    float my[2] = {100.0f, 0.0f};
     for (int i = 0; i < 4; ++i) {
         sg_apply_bindings(&fi->terrainbind[i]);
 

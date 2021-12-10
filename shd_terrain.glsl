@@ -152,7 +152,7 @@ float shadowcalc(vec4 fragpos_ls) {
 void main() {
     vec4 bl = texture(imgblend, inter.uv);
     float idx = bl.r * 256;
-    vec3 vv = vec3(inter.uv.x*100, inter.uv.y*100, idx);
+    vec3 vv = vec3(inter.uv.x*25, inter.uv.y*25, idx);
 
     vec3 pixdiff = texture(imgdiff, vv).rgb;
     vec3 pixspec = texture(imgspec, vv).rgb;

@@ -13,13 +13,12 @@ extern hmm_mat4 model_matrix[10];
 hmm_vec3 lipos;
 void calc_lightmatrix()
 {
-    float near = 0.0f;
+    float near = -5.0f;
     float far = 100.0f;
-    hmm_vec3 lightpos = cam.pos;
     hmm_mat4 lightproject = HMM_Orthographic(-100.f, 100.f, -100.f, 100.0f, near, far);
-    hmm_mat4 lightview = HMM_LookAt(lightpos, cam.dir, HMM_Vec3(0.0f, 1.0f, 0.0f));
+    hmm_mat4 lightview = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), HMM_Vec3(0.0f, 1.0f, 0.0f));
     shadow.lightspace = HMM_MultiplyMat4(lightproject, lightview);
-    lipos = lightpos;
+    lipos = cam.pos;
 }
 
 void init_shadow()
@@ -105,8 +104,8 @@ void shadow_draw()
         .lightmat = shadow.lightspace,
     };
 
-    float mx[2] = {0.0f, 300.0f};
-    float my[2] = {300.0f, 0.0f};
+    float mx[2] = {0.0f, 100.0f};
+    float my[2] = {100.0f, 0.0f};
     for (int i = 0; i < 4; ++i) {
         shadow.tbind.vertex_buffers[0] = fi.map.vbuffers[i];
         shadow.tbind.index_buffer = fi.map.ibuffers[i];
