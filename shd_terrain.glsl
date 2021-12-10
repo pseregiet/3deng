@@ -75,7 +75,7 @@ mat3 transpose(mat3 mat) {
 
 void main() {
     inter.uv = auv;
-    mat3 normalmat = mat3(unormalmat);
+    mat3 normalmat = mat3(model); //mat3(unormalmat);
     vec3 T = normalize(normalmat * atang);
     vec3 N = normalize(normalmat * anorm);
     T = normalize(T - dot(T, N) * N);
@@ -130,13 +130,14 @@ float shadowcalc(vec4 fragpos_ls) {
     float currdepth = projcoords.z;
     
     //float bias = max(0.05 * (1.0 - dot(normal, lightdir)), 0.005);
+    float bias = 0.0;
 
     float shadow = 0.0;
     vec2 texelsize = 1.0 / shadowmap_size;
     for (int x = -1; x <= 1; ++x) {
         for (int y = -1; y <= 1; ++y) {
             float pcfdepth = decodedepth(texture(shadowmap, projcoords.xy + vec2(x,y) * texelsize));
-            shadow += currdepth /*- bias*/ > pcfdepth ? 1.0 : 0.0;
+            shadow += currdepth - bias > pcfdepth ? 1.0 : 0.0;
         }
     }
 
@@ -151,7 +152,7 @@ float shadowcalc(vec4 fragpos_ls) {
 void main() {
     vec4 bl = texture(imgblend, inter.uv);
     float idx = bl.r * 256;
-    vec3 vv = vec3(inter.uv.x*10, inter.uv.y*10, idx);
+    vec3 vv = vec3(inter.uv.x*100, inter.uv.y*100, idx);
 
     vec3 pixdiff = texture(imgdiff, vv).rgb;
     vec3 pixspec = texture(imgspec, vv).rgb;
@@ -160,7 +161,7 @@ void main() {
     pixnorm = normalize(pixnorm * 2.0 - 1.0);
     vec3 ambient = uambi * pixdiff;
 
-    vec3 lightdir = normalize(inter.tang_lightpos);// - inter.tang_fragpos);
+    vec3 lightdir = normalize(-inter.tang_lightpos);// - inter.tang_fragpos);
     float diff = max(dot(pixnorm, lightdir), 0.0);
     vec3 diffuse = diff * udiff;
 

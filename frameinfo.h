@@ -4,10 +4,10 @@
 #define SOKOL_NO_SOKOL_APP
 #include "../sokol/sokol_gfx.h"
 #include "objloader.h"
+#include "heightmap.h"
 #include <stdbool.h>
 
 struct frameinfo {
-    sg_buffer terrainvbuf;
     sg_buffer modelvbuf;
 
     sg_pipeline mainpip;
@@ -17,10 +17,11 @@ struct frameinfo {
     sg_bindings lightbind;
 
     sg_pipeline terrainpip;
-    sg_bindings terrainbind;
+    sg_bindings terrainbind[4];
 
     sg_pass_action pass_action;
     struct model cat;
+    struct worldmap map;
 
     bool lightsenable[32];
 };

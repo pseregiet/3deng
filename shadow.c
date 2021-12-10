@@ -13,10 +13,10 @@ extern hmm_mat4 model_matrix[10];
 hmm_vec3 lipos;
 void calc_lightmatrix()
 {
-    float near = -100.0f;
+    float near = 0.0f;
     float far = 100.0f;
     hmm_vec3 lightpos = cam.pos;
-    hmm_mat4 lightproject = HMM_Orthographic(-50.f, 50.f, -50.f, 50.0f, near, far);
+    hmm_mat4 lightproject = HMM_Orthographic(-100.f, 100.f, -100.f, 100.0f, near, far);
     hmm_mat4 lightview = HMM_LookAt(lightpos, cam.dir, HMM_Vec3(0.0f, 1.0f, 0.0f));
     shadow.lightspace = HMM_MultiplyMat4(lightproject, lightview);
     lipos = lightpos;
@@ -41,7 +41,6 @@ void init_shadow()
     imgdesc.pixel_format = SG_PIXELFORMAT_DEPTH;
     shadow.depthmap = sg_make_image(&imgdesc);
 
-    shadow.tbind.vertex_buffers[0] = fi.terrainvbuf;
     shadow.mbind.vertex_buffers[0] = fi.modelvbuf;
     //shadow.tbind.fs_images[SLOT_shadowmap] = shadow.colormap;
     //shadow.mbind.fs_images[SLOT_shadowmap] = shadow.colormap;
@@ -68,6 +67,7 @@ void init_shadow()
     
     shadow.tpip = sg_make_pipeline(&(sg_pipeline_desc){
         .shader = shd_depth,
+        .index_type = SG_INDEXTYPE_UINT16,
         .layout = {
             .buffers[ATTR_vs_depth_apos] = {.stride = 11 * sizeof(float) },
             .attrs[ATTR_vs_depth_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
@@ -100,17 +100,24 @@ void shadow_draw()
 {
     sg_begin_pass(shadow.pass, &shadow.act);
     sg_apply_pipeline(shadow.tpip);
-    sg_apply_bindings(&shadow.tbind);
-    
-    hmm_mat4 rotat =  HMM_Rotate(90, HMM_Vec3(1.0f, 0.0f, 0.0f));
-    hmm_mat4 model = HMM_MultiplyMat4(model, rotat);
     
     vs_depthparams_t unis = {
         .lightmat = shadow.lightspace,
-        .model = model,
     };
-    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_depthparams, &SG_RANGE(unis));
-    sg_draw(0, 6, 1);
+
+    float mx[2] = {0.0f, 300.0f};
+    float my[2] = {300.0f, 0.0f};
+    for (int i = 0; i < 4; ++i) {
+        shadow.tbind.vertex_buffers[0] = fi.map.vbuffers[i];
+        shadow.tbind.index_buffer = fi.map.ibuffers[i];
+        
+        unis.model = HMM_Translate(HMM_Vec3(mx[i%2], -50.0f, mx[i/2]));
+
+        sg_apply_bindings(&shadow.tbind);
+
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_depthparams, &SG_RANGE(unis));
+        sg_draw(0, 130*130*6, 1);
+    }
 
     sg_apply_pipeline(shadow.pip);
     sg_apply_bindings(&shadow.mbind);

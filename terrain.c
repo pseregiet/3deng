@@ -1,4 +1,5 @@
 #include "terrain.h"
+#include "heightmap.h"
 #include "texloader.h"
 #include "genshd_terrain.h"
 #include "hmm.h"
@@ -67,54 +68,25 @@ int init_terrain()
         return -1;
     }
 
-    /* positions */
-    hmm_vec3 pos0 = HMM_Vec3(-25.f,  25.f, 0.f);
-    hmm_vec3 pos1 = HMM_Vec3(-25.f, -25.f, 0.f);
-    hmm_vec3 pos2 = HMM_Vec3( 25.f, -25.f, 0.f);
-    hmm_vec3 pos3 = HMM_Vec3( 25.f,  25.f, 0.f);
-    /* texture coordinates */
-    hmm_vec2 uv0 = HMM_Vec2(0.f, 1.f);
-    hmm_vec2 uv1 = HMM_Vec2(0.f, 0.f);
-    hmm_vec2 uv2 = HMM_Vec2(1.f, 0.f);  
-    hmm_vec2 uv3 = HMM_Vec2(1.f, 1.f);
-    /* normal vector */
-    hmm_vec3 nm = HMM_Vec3(0.f, 0.f, 1.f);
-    /* tangents */
-    hmm_vec3 ta0 = computeTangent(pos0, pos1, pos2, uv0, uv1, uv2);
-    hmm_vec3 ta1 = computeTangent(pos0, pos2, pos3, uv0, uv2, uv3);
+    if (worldmap_init(&fi.map, "metin2_map_battlefied"))
+        return -1;
 
-    /* we can compute the bitangent in the vertex shader by taking 
-       the cross product of the normal and tangent */
-    float quad_vertices[] = {
-        // positions            // normal         // texcoords  // tangent           
-        pos0.X, pos0.Y, pos0.Z, nm.X, nm.Y, nm.Z, uv0.X, uv0.Y, ta0.X, ta0.Y, ta0.Z,
-        pos1.X, pos1.Y, pos1.Z, nm.X, nm.Y, nm.Z, uv1.X, uv1.Y, ta0.X, ta0.Y, ta0.Z,
-        pos2.X, pos2.Y, pos2.Z, nm.X, nm.Y, nm.Z, uv2.X, uv2.Y, ta0.X, ta0.Y, ta0.Z,
-
-        pos0.X, pos0.Y, pos0.Z, nm.X, nm.Y, nm.Z, uv0.X, uv0.Y, ta1.X, ta1.Y, ta1.Z,
-        pos2.X, pos2.Y, pos2.Z, nm.X, nm.Y, nm.Z, uv2.X, uv2.Y, ta1.X, ta1.Y, ta1.Z,
-        pos3.X, pos3.Y, pos3.Z, nm.X, nm.Y, nm.Z, uv3.X, uv3.Y, ta1.X, ta1.Y, ta1.Z
-    };
-    
-    sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc) {
-        .data.size = sizeof(quad_vertices),
-        .data.ptr = quad_vertices,
-    });
-
-    fi.terrainvbuf = vbuf;
-
-    fi.terrainbind = (sg_bindings){
-        .vertex_buffers[0] = vbuf,
-        .fs_images[SLOT_imgdiff] = imgd,
-        .fs_images[SLOT_imgspec] = imgs,
-        .fs_images[SLOT_imgnorm] = imgn,
-        .fs_images[SLOT_imgblend] = imgb,
-    };
+    for (int i = 0; i < 4; ++i) {
+        fi.terrainbind[i] = (sg_bindings){
+            .vertex_buffers[0] = fi.map.vbuffers[i],
+            .index_buffer = fi.map.ibuffers[i],
+            .fs_images[SLOT_imgdiff] = imgd,
+            .fs_images[SLOT_imgspec] = imgs,
+            .fs_images[SLOT_imgnorm] = imgn,
+            .fs_images[SLOT_imgblend] = imgb,
+        };
+    }
 
     sg_shader terrainshd = sg_make_shader(terrainshd_shader_desc(SG_BACKEND_GLCORE33));
 
     fi.terrainpip = sg_make_pipeline(&(sg_pipeline_desc) {
         .shader = terrainshd,
+        .index_type = SG_INDEXTYPE_UINT16,
         .color_count = 1,
         .colors[0] = {
             .write_mask = SG_COLORMASK_RGB,
@@ -124,7 +96,6 @@ int init_terrain()
                 .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
             },
         },
-        //.index_type = SG_INDEXTYPE_UINT16,
         .layout = {
             .attrs = {
                 [ATTR_vs_terrain_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
@@ -145,41 +116,50 @@ int init_terrain()
 
 void terrain_set_shadowmap(sg_image shadowmap)
 {
-    fi.terrainbind.fs_images[SLOT_shadowmap] = shadowmap;
+    for (int i = 0; i < 4; ++i)
+        fi.terrainbind[i].fs_images[SLOT_shadowmap] = shadowmap;
 }
 
 extern hmm_vec3 dirlight_ambi;
 extern hmm_vec3 dirlight_diff;
 extern hmm_vec3 lipos;
-void draw_terrain(struct frameinfo *fi, hmm_mat4 vp, hmm_mat4 model,
+void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         hmm_vec3 lightpos, hmm_vec3 viewpos, hmm_mat4 lightmatrix)
 {
+    hmm_mat4 model = {0};
     sg_apply_pipeline(fi->terrainpip);
-    sg_apply_bindings(&fi->terrainbind);
-
-    hmm_mat4 rotat =  HMM_Rotate(90, HMM_Vec3(1.0f, 0.0f, 0.0f));
-    model = HMM_MultiplyMat4(model, rotat);
-    hmm_mat4 normalmat = extrahmm_transpose_inverse_mat3(model);
+    
+    //hmm_mat4 rotat =  HMM_Rotate(90, HMM_Vec3(1.0f, 0.0f, 0.0f));
+    //model = HMM_MultiplyMat4(model, rotat);
     
     vs_params_t munis = {
         .vp = vp,
-        .model = model,
-        .unormalmat = normalmat,
         .lightpos = lightpos,
         .lightpos_s = lipos,
         .viewpos = viewpos,
         .lightspace_matrix = lightmatrix,
     };
-    sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
-    
+
     fs_params_t fsparm = {
         .uambi = dirlight_ambi,
         .udiff = dirlight_diff,
         .uspec = HMM_Vec3(0.5f, 0.5f, 0.5f),
         .shadowmap_size = HMM_Vec2(1024.0f, 1024.0f),
     };
-    sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &SG_RANGE(fsparm));
-    sg_draw(0, 6, 1);
+
+    float mx[2] = {0.0f, 300.0f};
+    float my[2] = {300.0f, 0.0f};
+    for (int i = 0; i < 4; ++i) {
+        sg_apply_bindings(&fi->terrainbind[i]);
+
+        munis.model = HMM_Translate(HMM_Vec3(mx[i%2], -50.0f, mx[i/2]));
+        munis.unormalmat = extrahmm_transpose_inverse_mat3(munis.model);
+        
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &SG_RANGE(fsparm));
+        
+        sg_draw(0, 130*130*6, 1);
+    }
 }
 
 void draw_terrain4shadow(struct frameinfo *fi, hmm_mat4 vp, hmm_mat4 model)

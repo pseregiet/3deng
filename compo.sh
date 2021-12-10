@@ -29,6 +29,7 @@ FILE="\
     sokol_imgui.c \
     stb_image.c \
     shadow.c \
+    heightmap.c \
     terrain.c \
     texloader.c \
     extrahmm.c \

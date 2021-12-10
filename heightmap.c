@@ -7,9 +7,10 @@
 
 inline static float get_height(uint16_t pixel)
 {
-    return ((float)pixel / (float)0xFFFF) * 600.0f;
+    return ((float)pixel / (float)0xFFFF) * 100.0f;
 }
 
+/*
 static hmm_vec3 computeTangent(hmm_vec3 pos0, hmm_vec3 pos1, hmm_vec3 pos2, hmm_vec2 uv0, hmm_vec2 uv1, hmm_vec2 uv2) {
     hmm_vec3 edge0 = HMM_SubtractVec3(pos1, pos0);
     hmm_vec3 edge1 = HMM_SubtractVec3(pos2, pos0);
@@ -24,10 +25,11 @@ static hmm_vec3 computeTangent(hmm_vec3 pos0, hmm_vec3 pos1, hmm_vec3 pos2, hmm_
 
     return HMM_Vec3(x, y, z);
 }
+*/
 
 static hmm_vec3 get_normal(uint16_t *gfx, int x, int y, int w, int h)
 {
-    float hl, hr, hd, hu = 0.0f;
+    float hl = 0.0f, hr = 0.0f, hd = 0.0f, hu = 0.0f;
     if (x)
         hl = get_height(gfx[ ((y+0)*w) + x-1 ]);
     if (x < w-1)
@@ -41,18 +43,34 @@ static hmm_vec3 get_normal(uint16_t *gfx, int x, int y, int w, int h)
     return HMM_NormalizeVec3(v3);
 }
 
+hmm_vec3 computeTangent(hmm_vec3 *v0pos, hmm_vec3 *v1pos, hmm_vec3 *v2pos,
+        hmm_vec2 *v0uv, hmm_vec2 *v1uv, hmm_vec2 *v2uv) {
+
+    hmm_vec3 edge0 = HMM_SubtractVec3(*v1pos, *v0pos);
+    hmm_vec3 edge1 = HMM_SubtractVec3(*v2pos, *v0pos);
+    hmm_vec2 delta_uv0 = HMM_SubtractVec2(*v1uv, *v0uv);
+    hmm_vec2 delta_uv1 = HMM_SubtractVec2(*v2uv, *v0uv);
+
+    float f = 1.f / (delta_uv0.X * delta_uv1.Y - delta_uv1.X * delta_uv0.Y);
+    float x = f * (delta_uv1.Y * edge0.X - delta_uv0.Y * edge1.X);
+    float y = f * (delta_uv1.Y * edge0.Y - delta_uv0.Y * edge1.Y);
+    float z = f * (delta_uv1.Y * edge0.Z - delta_uv0.Y * edge1.Z);
+
+    return HMM_Vec3(x, y, z);
+}
+
 static void generate_vbuf(uint16_t *gfx, int w, int h, int offx, int offy, sg_buffer *vbuf, sg_buffer *ibuf)
 {
     int vptr = 0;
     float vsize = (float)h - 1;
     
     int verts_size = sizeof(float) * 11 * w * h;
-    int indices_size = sizeof(uint16_t) * 6 * vsize * vsize;
+    int indices_size = sizeof(uint16_t) * 6 * (h-1) * (h-1);
     float *verts = malloc(verts_size);
     uint16_t *indices = malloc(indices_size);
 
-    float offsetx = 50.0f * (float)offx;
-    float offsety = 50.0f * (float)offy;
+    float offsetx = 300.0f;// * (float)offx;
+    float offsety = 300.0f;// * (float)offy;
 
     for (int y = 0; y < h; ++y) {
         uint16_t *ptr = &gfx[w*y];
@@ -71,12 +89,13 @@ static void generate_vbuf(uint16_t *gfx, int w, int h, int offx, int offy, sg_bu
             verts[vptr * 11 + 5] = normal.Z;
 
             //UVs
-            verts[vptr * 11 + 6] = ((float)x / vsize) * offsetx - 25.0f;
-            verts[vptr * 11 + 7] = ((float)y / vsize) * offsety - 25.0f;
+            verts[vptr * 11 + 6] = ((float)x / vsize);
+            verts[vptr * 11 + 7] = ((float)y / vsize);
 
             //tangents
-            //verts[vptr * 11 + 8] = 0;
-            //verts[vptr * 11 + 9] = 0;
+            verts[vptr * 11 +  8] = 0.0f;
+            verts[vptr * 11 +  9] = 1.0f;
+            verts[vptr * 11 + 10] = 0.0f;
             vptr++;
         }
     }
@@ -84,7 +103,7 @@ static void generate_vbuf(uint16_t *gfx, int w, int h, int offx, int offy, sg_bu
     vptr = 0;
 
     for (int y = 0; y < h-1; ++y) {
-        for (int x = 0; x < h; ++x) {
+        for (int x = 0; x < h-1; ++x) {
             int tl = (y * h) + x;
             int tr = tl + 1;
             int bl = (y+1) * h + x;
@@ -97,28 +116,29 @@ static void generate_vbuf(uint16_t *gfx, int w, int h, int offx, int offy, sg_bu
             indices[vptr++] = br;
             indices[vptr++] = bl;
 
-            hmm_vec3 *pos0 = (hmm_vec3 *)&indices[tl * 11 + 0];
-            hmm_vec3 *pos1 = (hmm_vec3 *)&indices[tr * 11 + 0];
-            hmm_vec3 *pos2 = (hmm_vec3 *)&indices[bl * 11 + 0];
-            hmm_vec3 *pos3 = (hmm_vec3 *)&indices[br * 11 + 0];
-            hmm_vec2 *uv0  = (hmm_vec2 *)&indices[tl * 11 + 6];
-            hmm_vec2 *uv1  = (hmm_vec2 *)&indices[tr * 11 + 6];
-            hmm_vec2 *uv2  = (hmm_vec2 *)&indices[bl * 11 + 6];
-            hmm_vec2 *uv3  = (hmm_vec2 *)&indices[br * 11 + 6];
-
-            hmm_vec3 ta0 = computeTangent(*pos0, *pos1, *pos2, *uv0, *uv1, *uv2);
-            hmm_vec3 ta1 = computeTangent(*pos1, *pos3, *pos2, *uv1, *uv3, *uv2);
-
-            indices[tl * 11 +  8] = ta0.X; indices[tl * 11 +  9] = ta0.Y; indices[tl * 11 + 10] = ta0.Z;
-            indices[tr * 11 +  8] = ta0.X; indices[tr * 11 +  9] = ta0.Y; indices[tr * 11 + 10] = ta0.Z;
-            indices[bl * 11 +  8] = ta0.X; indices[bl * 11 +  9] = ta0.Y; indices[bl * 11 + 10] = ta0.Z;
-            
-            indices[tr * 11 +  8] = ta0.X; indices[tr * 11 +  9] = ta0.Y; indices[tr * 11 + 10] = ta0.Z;
-            indices[bl * 11 +  8] = ta0.X; indices[bl * 11 +  9] = ta0.Y; indices[bl * 11 + 10] = ta0.Z;
-            indices[br * 11 +  8] = ta0.X; indices[br * 11 +  9] = ta0.Y; indices[br * 11 + 10] = ta0.Z;
         }
     }
-    
+
+    for (int i = 0; i < indices_size/6; i+=3) {
+            int i0 = indices[i+0];
+            int i1 = indices[i+1];
+            int i2 = indices[i+2];
+
+            hmm_vec3 *v0pos = (hmm_vec3 *)&verts[i0 * 11 + 0];
+            hmm_vec3 *v1pos = (hmm_vec3 *)&verts[i1 * 11 + 0];
+            hmm_vec3 *v2pos = (hmm_vec3 *)&verts[i2 * 11 + 0];
+
+            hmm_vec2 *v0uv = (hmm_vec2 *)&verts[i0 * 11 + 6];
+            hmm_vec2 *v1uv = (hmm_vec2 *)&verts[i1 * 11 + 6];
+            hmm_vec2 *v2uv = (hmm_vec2 *)&verts[i2 * 11 + 6];
+
+            hmm_vec3 t0 = computeTangent(v0pos, v1pos, v2pos, v0uv, v1uv, v2uv);
+
+            verts[i0 * 11 +  8] = t0.X; verts[i0 * 11 +  9] = t0.Y; verts[i0 * 11 + 10] = t0.Z;
+            verts[i1 * 11 +  8] = t0.X; verts[i1 * 11 +  9] = t0.Y; verts[i1 * 11 + 10] = t0.Z;
+            verts[i2 * 11 +  8] = t0.X; verts[i2 * 11 +  9] = t0.Y; verts[i2 * 11 + 10] = t0.Z;
+    }
+
     *vbuf = sg_make_buffer(&(sg_buffer_desc) {
         .data.ptr = verts,
         .data.size = verts_size,
@@ -143,7 +163,7 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
 
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
-            sprintf(path, "%s/%03d%03d/height.raw", w, h);
+            sprintf(path, "%s/%03d%03d/height.raw", fn, x, y);
             FILE *f = fopen(path, "rb");
             if (!f) {
                 printf("cannot open file %s\n", path);
@@ -160,7 +180,7 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
                 goto freepixels;
             }
 
-            int fgot = fread(pixels, 1, maxsize, f) != maxsize;
+            int fgot = fread(pixels, 1, maxsize, f);
             fclose(f);
             if (fgot != maxsize) {
                 printf("read only %d bytes, expected %d\n", fgot, maxsize);

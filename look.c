@@ -66,16 +66,16 @@ struct m2world m2 = {0};
 
 hmm_vec3 cubespos[10] = {
 
-    {.X= 0.0f, .Y= 0.0f, .Z= 0.0f},
-    {.X= 12.0f, .Y= 5.0f, .Z=-15.0f},
-    {.X=-1.5f, .Y=-2.2f, .Z=-2.5f},
-    {.X=-3.8f, .Y=-2.0f, .Z=-12.3f},
-    {.X= 2.4f, .Y=-0.4f, .Z=-3.5f},
-    {.X=-1.7f, .Y= 3.0f, .Z=-7.5f},
-    {.X= 1.3f, .Y=-2.0f, .Z=-2.5f},
-    {.X= 1.5f, .Y= 2.0f, .Z=-2.5f},
-    {.X= 1.5f, .Y= 0.2f, .Z=-1.5f},
-    {.X=-1.3f, .Y= 1.0f, .Z=-1.5f},
+    {.X= 0.0f,  .Y=40.0f, .Z= 0.0f},
+    {.X= 12.0f, .Y=45.0f, .Z=-15.0f},
+    {.X=-1.5f,  .Y=42.2f, .Z=-2.5f},
+    {.X=-3.8f,  .Y=42.0f, .Z=-12.3f},
+    {.X= 2.4f,  .Y=40.4f, .Z=-3.5f},
+    {.X=-1.7f,  .Y=43.0f, .Z=-7.5f},
+    {.X= 1.3f,  .Y=42.0f, .Z=-2.5f},
+    {.X= 1.5f,  .Y=42.0f, .Z=-2.5f},
+    {.X= 1.5f,  .Y=40.2f, .Z=-1.5f},
+    {.X=-1.3f,  .Y=41.0f, .Z=-1.5f},
 
 };
 
@@ -209,14 +209,14 @@ static void do_frame(struct frameinfo *fi, double delta)
     hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
     hmm_mat4 vp = HMM_MultiplyMat4(projection, view);
 
-    hmm_mat4 model = HMM_Translate(HMM_Vec3(0.0, -5.0f, 0.0));
+    hmm_mat4 model = {0};//HMM_Translate(HMM_Vec3(0.0, -5.0f, 0.0));
     vs_params_t munis = {
         .model = model,
         .vp = vp,
     };
 
     
-    draw_terrain(fi, vp, model, ldir, cam.pos, shadow.lightspace);
+    draw_terrain(fi, vp, ldir, cam.pos, shadow.lightspace);
     sg_apply_pipeline(fi->mainpip);
 
     //fs uniforms
