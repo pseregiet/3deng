@@ -22,7 +22,7 @@ char keymap[KEY_COUNT] = {0};
 
 void move_camera(double delta)
 {
-    float camspeed = 0.01f * delta;
+    float camspeed = 0.05f * delta;
     hmm_vec3 off;
     if (keymap[KEYW]) {
         off = HMM_MultiplyVec3f(cam.front, camspeed);

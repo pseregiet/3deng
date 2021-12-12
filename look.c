@@ -194,7 +194,7 @@ static void do_imgui_frame(int w, int h, double delta)
 
 static void do_frame(struct frameinfo *fi, double delta)
 {
-    hmm_mat4 projection = HMM_Perspective(45.0f, (float)WW/(float)WH, 0.1f, 100.0f);
+    hmm_mat4 projection = HMM_Perspective(45.0f, (float)WW/(float)WH, 0.1f, 300.0f);
 
     int w, h;
     SDL_GL_GetDrawableSize(sdl.win, &w, &h);
