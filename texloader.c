@@ -5,6 +5,21 @@
     printf(__VA_ARGS__);\
     exit(-1)
 
+void make_sg_image(uint32_t *ptr, int w, int h, sg_image *img)
+{
+    *img = sg_make_image(&(sg_image_desc) {
+        .width = w,
+        .height = h,
+        .pixel_format = SG_PIXELFORMAT_RGBA8,
+        .min_filter = SG_FILTER_NEAREST,
+        .mag_filter = SG_FILTER_NEAREST,
+        .data.subimage[0][0] = {
+            .ptr = ptr,
+            .size = (w*h*4),
+        },
+    });
+}
+
 int load_sg_image(const char *fn, sg_image *img)
 {
     int w,h,n;

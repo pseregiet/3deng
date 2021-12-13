@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#define SCALEW 100.0f
-#define SCALEH 40.0f
+#define SCALEW 200.0f
+#define SCALEH 200.0f
 
 inline static float get_height(uint16_t pixel)
 {
@@ -282,6 +282,55 @@ freepixels:
     return ret;
 }
 
+static int load_blendmap(struct worldmap *map, const char *fn)
+{
+    const int maxsize = 258*258;
+    const int blendsize = map->w * map->h * maxsize;
+    const int stride = map->w * 258;
+    int ret = -1;
+    char path[0x1000];
+    uint8_t pixelline[258];
+
+    uint32_t *pixels = malloc(blendsize * 4);
+
+    for (int y = 0; y < map->h; ++y) {
+        for (int x = 0; x < map->w; ++x) {
+            sprintf(path, "%s/%03d%03d/tile.raw", fn, x, y);
+            FILE *f = fopen(path, "rb");
+            if (!f) {
+                printf("cannot open file %s\n", path);
+                goto freepixels;
+            }
+            
+            fseek(f, 0, SEEK_END);
+            int fsize = ftell(f);
+            fseek(f, 0, SEEK_SET);
+
+            if (fsize != maxsize) {
+                printf("File %s has weird size %d, expected %d\n", fsize, maxsize);
+                fclose(f);
+                goto freepixels;
+            }
+
+            for (int line = 0; line < 258; ++line) {
+                fread(pixelline, 1, 258, f);
+                uint32_t *pptr = &pixels[line * stride + (x * 258) + (y * stride * 258)];
+                for (int i = 0; i < 258; ++i)
+                    pptr[i] = pixelline[i];
+            }
+
+            fclose(f);
+        }
+    }
+
+    make_sg_image(pixels, 258*map->w, 258*map->h, &map->blendmap);
+
+    ret = 0;
+freepixels:
+    free(pixels);
+    return ret;
+}
+
 int worldmap_init(struct worldmap *map, const char *fn)
 {
     //TODO: find size in file
@@ -292,6 +341,9 @@ int worldmap_init(struct worldmap *map, const char *fn)
     map->h = h;
 
     if (load_map(fn, w, h, map))
+        return -1;
+
+    if (load_blendmap(map, fn))
         return -1;
 
     return 0;

@@ -30,44 +30,50 @@ int init_terrain()
 {
     const char *filesd[] = {
         "terraintex/grass_mix_d.jpg",
-        "terraintex/mntn_dark_d.jpg",
+        "terraintex/ground_dry2_d.jpg",
         "terraintex/snow_mud_d.jpg",
+        "terraintex/desert_mud_d.jpg",
+        "terraintex/mntn_dark_d.jpg",
     };
     const char *filess[] = {
         "terraintex/grass_mix_s.jpg",
         "terraintex/mntn_dark_s.jpg",
         "terraintex/snow_mud_s.jpg",
+        "terraintex/desert_mud_s.jpg",
+        "terraintex/ground_dry2_s.jpg",
     };
     const char *filesn[] = {
         "terraintex/grass_mix_n.jpg",
         "terraintex/mntn_dark_n.jpg",
         "terraintex/snow_mud_n.jpg",
+        "terraintex/desert_mud_n.jpg",
+        "terraintex/ground_dry2_n.jpg",
     };
     sg_image imgd;
     sg_image imgs;
     sg_image imgn;
-    sg_image imgb;
+    //sg_image imgb;
 
-    if (load_sg_image_array(filesd, &imgd, 3)) {
+    if (load_sg_image_array(filesd, &imgd, 5)) {
         fatalerror("can't load terrain textures\n");
         return -1;
     }
 
-    if (load_sg_image_array(filess, &imgs, 3)) {
+    if (load_sg_image_array(filess, &imgs, 5)) {
         fatalerror("can't load terrain textures\n");
         return -1;
     }
 
-    if (load_sg_image_array(filesn, &imgn, 3)) {
+    if (load_sg_image_array(filesn, &imgn, 5)) {
         fatalerror("can't load terrain textures\n");
         return -1;
     }
-
+/*
     if (load_sg_image("terraintex/blend.png", &imgb)) {
         fatalerror("can't load terrain blend\n");
         return -1;
     }
-
+*/
     if (worldmap_init(&fi.map, "metin2_map_battlefied"))
         return -1;
 
@@ -78,7 +84,8 @@ int init_terrain()
             .fs_images[SLOT_imgdiff] = imgd,
             .fs_images[SLOT_imgspec] = imgs,
             .fs_images[SLOT_imgnorm] = imgn,
-            .fs_images[SLOT_imgblend] = imgb,
+            .fs_images[SLOT_imgblend] = fi.map.blendmap,
+            //.fs_images[SLOT_imgblend] = imgb,
         };
     }
 
@@ -147,22 +154,22 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         .shadowmap_size = HMM_Vec2(1024.0f, 1024.0f),
     };
 
-    float mx[2] = {0.0f, 100.0f};
-    float my[2] = {100.0f, 0.0f};
-    for (int i = 0; i < 4; ++i) {
-        sg_apply_bindings(&fi->terrainbind[i]);
-
-        munis.model = HMM_Translate(HMM_Vec3(mx[i%2], -50.0f, mx[i/2]));
-        munis.unormalmat = extrahmm_transpose_inverse_mat3(munis.model);
+    int idx = 0;
+    float tx = 1.0f / (float)fi->map.w;
+    float ty = 1.0f / (float)fi->map.h;
+    for (int y = 0; y < fi->map.h; ++y) {
+        for (int x = 0; x < fi->map.w; ++x) {
+            sg_apply_bindings(&fi->terrainbind[idx++]);
         
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &SG_RANGE(fsparm));
+            munis.model = HMM_Translate(HMM_Vec3(200.0f * x, -50.0f, (200.0f * y)));
+            munis.unormalmat = extrahmm_transpose_inverse_mat3(munis.model);
+            fsparm.blendoffset = HMM_Vec2(tx * x, ty * y);
         
-        sg_draw(0, 130*130*6, 1);
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
+            sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &SG_RANGE(fsparm));
+            
+            sg_draw(0, 130*130*6, 1);
+        }
     }
 }
 
-void draw_terrain4shadow(struct frameinfo *fi, hmm_mat4 vp, hmm_mat4 model)
-{
-
-}

@@ -104,8 +104,8 @@ void shadow_draw()
         .lightmat = shadow.lightspace,
     };
 
-    float mx[2] = {0.0f, 100.0f};
-    float my[2] = {100.0f, 0.0f};
+    float mx[2] = {0.0f, 200.0f};
+    float my[2] = {200.0f, 0.0f};
     for (int i = 0; i < 4; ++i) {
         shadow.tbind.vertex_buffers[0] = fi.map.vbuffers[i];
         shadow.tbind.index_buffer = fi.map.ibuffers[i];

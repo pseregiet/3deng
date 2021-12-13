@@ -74,7 +74,7 @@ mat3 transpose(mat3 mat) {
 */
 
 void main() {
-    inter.uv = auv;
+    inter.uv = auv/2;
     mat3 normalmat = mat3(model); //mat3(unormalmat);
     vec3 T = normalize(normalmat * atang);
     vec3 N = normalize(normalmat * anorm);
@@ -110,6 +110,7 @@ uniform fs_params {
     vec3 udiff;
     vec3 uspec;
     vec2 shadowmap_size;
+    vec2 blendoffset;
 };
 
 out vec4 fragcolor;
@@ -150,7 +151,7 @@ float shadowcalc(vec4 fragpos_ls) {
 }
 
 void main() {
-    vec4 bl = texture(imgblend, inter.uv);
+    vec4 bl = texture(imgblend, inter.uv + blendoffset);
     float idx = bl.r * 256;
     vec3 vv = vec3(inter.uv.x*15, inter.uv.y*15, idx);
 
