@@ -49,6 +49,16 @@ int init_terrain()
         "terraintex/desert_mud_n.jpg",
         "terraintex/ground_dry2_n.jpg",
     };
+    /*
+    const char *texpaths[] = {
+        "terraintex/grass_02_01.png",
+        "terraintex/tile01.png",
+        "terraintex/grass_02_01.png",
+        "terraintex/field_04.png",
+        "terraintex/stone01_01.png"
+    };
+    */
+
     sg_image imgd;
     sg_image imgs;
     sg_image imgn;
@@ -136,9 +146,6 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
     hmm_mat4 model = {0};
     sg_apply_pipeline(fi->terrainpip);
     
-    //hmm_mat4 rotat =  HMM_Rotate(90, HMM_Vec3(1.0f, 0.0f, 0.0f));
-    //model = HMM_MultiplyMat4(model, rotat);
-    
     vs_params_t munis = {
         .vp = vp,
         .lightpos = lightpos,
@@ -161,9 +168,9 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         for (int x = 0; x < fi->map.w; ++x) {
             sg_apply_bindings(&fi->terrainbind[idx++]);
         
-            munis.model = HMM_Translate(HMM_Vec3(200.0f * x, -50.0f, (200.0f * y)));
+            munis.model = HMM_Translate(HMM_Vec3(fi->map.scale * x, -50.0f, fi->map.scale * y));
             munis.unormalmat = extrahmm_transpose_inverse_mat3(munis.model);
-            fsparm.blendoffset = HMM_Vec2(tx * x, ty * y);
+            fsparm.blendoffset = HMM_Vec2(tx * y, ty * (1-x));
         
             sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
             sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &SG_RANGE(fsparm));

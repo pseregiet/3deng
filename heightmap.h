@@ -10,6 +10,7 @@
 struct worldmap {
     int w;
     int h;
+    float scale;
     sg_buffer vbuffers[WORLDMAP_MAXW * WORLDMAP_MAXH];
     sg_buffer ibuffers[WORLDMAP_MAXW * WORLDMAP_MAXH];
     sg_image blendmap;

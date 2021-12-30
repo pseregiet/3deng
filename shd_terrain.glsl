@@ -116,7 +116,7 @@ uniform fs_params {
 out vec4 fragcolor;
 
 uniform sampler2D shadowmap;
-uniform sampler2D imgblend;
+uniform sampler2DArray imgblend;
 uniform sampler2DArray imgdiff;
 uniform sampler2DArray imgspec;
 uniform sampler2DArray imgnorm;
@@ -151,13 +151,25 @@ float shadowcalc(vec4 fragpos_ls) {
 }
 
 void main() {
-    vec4 bl = texture(imgblend, inter.uv + blendoffset);
-    float idx = bl.r * 256;
-    vec3 vv = vec3(inter.uv.x*15, inter.uv.y*15, idx);
+    vec3 vv = vec3(inter.uv.x*20, inter.uv.y*20, 0.0);
 
     vec3 pixdiff = texture(imgdiff, vv).rgb;
     vec3 pixspec = texture(imgspec, vv).rgb;
     vec3 pixnorm = texture(imgnorm, vv).rgb;
+
+    for (int i = 0; i < 4; ++i) {
+        vv.z = float(i+1);
+        vec3 buv = vec3(inter.uv + blendoffset, float(i));
+        float bfactor = texture(imgblend, buv).a;
+
+        if (bfactor < 0.1)
+            continue;
+
+        pixdiff = mix(pixdiff, texture(imgdiff, vv).rgb, bfactor);
+        pixspec = mix(pixspec, texture(imgspec, vv).rgb, bfactor);
+        pixnorm = mix(pixnorm, texture(imgnorm, vv).rgb, bfactor);
+
+    }
 
     pixnorm = normalize(pixnorm * 2.0 - 1.0);
     vec3 ambient = uambi * pixdiff;

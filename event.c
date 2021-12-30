@@ -22,7 +22,7 @@ char keymap[KEY_COUNT] = {0};
 
 void move_camera(double delta)
 {
-    float camspeed = 0.05f * delta;
+    float camspeed = 0.1f * delta;
     hmm_vec3 off;
     if (keymap[KEYW]) {
         off = HMM_MultiplyVec3f(cam.front, camspeed);
@@ -54,21 +54,24 @@ void move_camera(double delta)
 static void rot_camera(int mx, int my)
 {
     my = -my;
-    const float sens = 0.01f;
+    const float sens = 0.1f;
     float xoff = (float)mx * sens;
     float yoff = (float)my * sens;
 
     cam.yaw += xoff;
     cam.pitch += yoff;
 
-    if (cam.pitch > 0.99f)
-        cam.pitch = 0.99f;
-    else if (cam.pitch < -0.99)
-        cam.pitch = -0.99;
+    if (cam.pitch > 89.0f)
+        cam.pitch = 89.0f;
+    else if (cam.pitch < -89.0f)
+        cam.pitch = -89.0f;
 
-    hmm_vec3 dir = HMM_Vec3(cosf(cam.yaw) * cosf(cam.pitch),
-                            sinf(cam.pitch),
-                            sinf(cam.yaw) * cosf(cam.pitch));
+    float ryaw = HMM_ToRadians(cam.yaw);
+    float rpitch = HMM_ToRadians(cam.pitch);
+
+    hmm_vec3 dir = HMM_Vec3(cosf(ryaw) * cosf(rpitch),
+                            sinf(rpitch),
+                            sinf(ryaw) * cosf(rpitch));
     cam.front = HMM_NormalizeVec3(dir);
 }
 

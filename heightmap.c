@@ -5,8 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define SCALEW 200.0f
-#define SCALEH 200.0f
+#define SCALEH 700.0f
 
 inline static float get_height(uint16_t pixel)
 {
@@ -114,15 +113,15 @@ static void fix_seams(struct worldmap *map, float *vbuf)
     }
 }
 
-static void generate_vbuf(uint16_t *gfx, int stride, float *verts, uint16_t *indices)
+static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, uint16_t *indices)
 {
     int vptr = 0;
     float vsize = (float)(131 - 1);
     
     int indices_size = 6 * (131-1) * (131-1);
 
-    float offsetx = SCALEW;
-    float offsety = SCALEW;
+    float offsetx = scale;
+    float offsety = scale;
 
     for (int y = 0; y < 131; ++y) {
         uint16_t *ptr = &gfx[stride * y];
@@ -142,7 +141,7 @@ static void generate_vbuf(uint16_t *gfx, int stride, float *verts, uint16_t *ind
 
             //UVs
             verts[vptr * 11 + 6] = ((float)x / vsize);
-            verts[vptr * 11 + 7] = ((float)y / vsize);
+            verts[vptr * 11 + 7] = 1.0f - ((float)y / vsize);
 
             //tangents
             //verts[vptr * 11 +  8] = 0.0f;
@@ -241,7 +240,7 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
             float *vbuf = &verts[vbufsize * offset];
             uint16_t *ibuf = &indices[ibufsize * offset];
 
-            generate_vbuf(pptr, stride, vbuf, ibuf);
+            generate_vbuf(map->scale, pptr, stride, vbuf, ibuf);
             fill_normals(vbuf, pixels, x, y, w, h);
         }
     }
@@ -284,55 +283,24 @@ freepixels:
 
 static int load_blendmap(struct worldmap *map, const char *fn)
 {
-    const int maxsize = 258*258;
-    const int blendsize = map->w * map->h * maxsize;
-    const int stride = map->w * 258;
-    int ret = -1;
-    char path[0x1000];
-    uint8_t pixelline[258];
+    const char *files[] = {
+        "metin2_map_battlefied/alpha_1.png", 
+        "metin2_map_battlefied/alpha_2.png", 
+        "metin2_map_battlefied/alpha_3.png", 
+        "metin2_map_battlefied/alpha_4.png", 
+    };
 
-    uint32_t *pixels = malloc(blendsize * 4);
-
-    for (int y = 0; y < map->h; ++y) {
-        for (int x = 0; x < map->w; ++x) {
-            sprintf(path, "%s/%03d%03d/tile.raw", fn, x, y);
-            FILE *f = fopen(path, "rb");
-            if (!f) {
-                printf("cannot open file %s\n", path);
-                goto freepixels;
-            }
-            
-            fseek(f, 0, SEEK_END);
-            int fsize = ftell(f);
-            fseek(f, 0, SEEK_SET);
-
-            if (fsize != maxsize) {
-                printf("File %s has weird size %d, expected %d\n", fsize, maxsize);
-                fclose(f);
-                goto freepixels;
-            }
-
-            for (int line = 0; line < 258; ++line) {
-                fread(pixelline, 1, 258, f);
-                uint32_t *pptr = &pixels[line * stride + (x * 258) + (y * stride * 258)];
-                for (int i = 0; i < 258; ++i)
-                    pptr[i] = pixelline[i];
-            }
-
-            fclose(f);
-        }
+    if (load_sg_image_array(files, &map->blendmap, 4)) {
+        printf("can't load alpha maps\n");
+        return -1;
     }
 
-    make_sg_image(pixels, 258*map->w, 258*map->h, &map->blendmap);
-
-    ret = 0;
-freepixels:
-    free(pixels);
-    return ret;
+    return 0;
 }
 
 int worldmap_init(struct worldmap *map, const char *fn)
 {
+    map->scale = 600.0f;
     //TODO: find size in file
     const int w = 2;
     const int h = 2;

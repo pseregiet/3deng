@@ -100,13 +100,13 @@ int load_sg_image_array(const char **fn, sg_image *img, int count)
     for (int i = 0; i < count; ++i)
         memcpy(&newdata[lastw * lasth * 4 * i], darr[i].data, lastw * lasth * 4);
 
-    *img = sg_make_image(&(sg_image_desc) {
+    *img = sg_make_image_with_mipmaps(&(sg_image_desc) {
         .type = SG_IMAGETYPE_ARRAY,
         .width = w,
         .height = h,
         .num_slices = count,
         .pixel_format = SG_PIXELFORMAT_RGBA8,
-        .min_filter = SG_FILTER_LINEAR,
+        .min_filter = SG_FILTER_NEAREST_MIPMAP_LINEAR,
         .mag_filter = SG_FILTER_LINEAR,
         .data.subimage[0][0] = {
             .ptr = newdata,
