@@ -28,6 +28,7 @@ static hmm_vec3 computeTangent(hmm_vec3 pos0, hmm_vec3 pos1, hmm_vec3 pos2, hmm_
 
 int init_terrain()
 {
+    /*
     const char *filesd[] = {
         "terraintex/grass_mix_d.jpg",
         "terraintex/ground_dry2_d.jpg",
@@ -35,6 +36,7 @@ int init_terrain()
         "terraintex/desert_mud_d.jpg",
         "terraintex/mntn_dark_d.jpg",
     };
+    */
     const char *filess[] = {
         "terraintex/grass_mix_s.jpg",
         "terraintex/mntn_dark_s.jpg",
@@ -49,15 +51,15 @@ int init_terrain()
         "terraintex/desert_mud_n.jpg",
         "terraintex/ground_dry2_n.jpg",
     };
-    /*
-    const char *texpaths[] = {
+    
+    const char *filesd[] = {
         "terraintex/grass_02_01.png",
         "terraintex/tile01.png",
         "terraintex/grass_02_01.png",
         "terraintex/field_04.png",
         "terraintex/stone01_01.png"
     };
-    */
+    
 
     sg_image imgd;
     sg_image imgs;
@@ -175,7 +177,7 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
             sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
             sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &SG_RANGE(fsparm));
             
-            sg_draw(0, 130*130*6, 1);
+            sg_draw(0, 128*128*6, 1);
         }
     }
 }

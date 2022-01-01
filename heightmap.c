@@ -15,35 +15,17 @@ inline static float get_height(uint16_t pixel)
 static hmm_vec3 get_normal(uint16_t *gfx, int x, int y, int w, int h)
 {
     float hl = 0.0f, hr = 0.0f, hd = 0.0f, hu = 0.0f;
-    if (x)
+    //if (x)
         hl = get_height(gfx[ ((y+0)*w) + x-1 ]);
-    if (x < w-1)
+    //if (x < w-1)
         hr = get_height(gfx[ ((y+0)*w) + x+1 ]);
-    if (y)
+    //if (y)
         hd = get_height(gfx[ ((y-1)*w) + x-0 ]);
-    if (y < h-1)
+    //if (y < h-1)
         hu = get_height(gfx[ ((y+1)*w) + x-0 ]);
 
     hmm_vec3 v3 = {hl-hr, 2.0f, hd-hu};
     return HMM_NormalizeVec3(v3);
-}
-
-static void fill_normals(float *vbuf, uint16_t *gfx, int x, int y, int w, int h)
-{
-    w *= 131;
-    h *= 131;
-    x *= 131;
-    y *= 131;
-    int vidx = 0;
-    for (int py = 0; py < 131; ++py) {
-        for (int px = 0; px < 131; ++px) {
-            hmm_vec3 normal = get_normal(gfx, x+px, y+py, w, h);
-            float *vptr = &vbuf[vidx++ * 11 + 3];
-            vptr[0] = normal.X;
-            vptr[1] = normal.Y;
-            vptr[2] = normal.Z;
-        }
-    }
 }
 
 hmm_vec3 get_tangent(hmm_vec3 *v0pos, hmm_vec3 *v1pos, hmm_vec3 *v2pos,
@@ -62,72 +44,21 @@ hmm_vec3 get_tangent(hmm_vec3 *v0pos, hmm_vec3 *v1pos, hmm_vec3 *v2pos,
     return HMM_Vec3(x, y, z);
 }
 
-static void fix_seams_parts_lr(float *a, float *b)
-{
-    float *ay = a + (130 * 11)+1;
-    float *by = b + (0 * 11)+1;
-
-    for (int i = 0; i < 131; ++i) {
-        float avg = (*ay + *by)/2.0f;
-        *ay = avg;
-        *by = avg;
-
-        ay += (131 * 11);
-        by += (131 * 11);
-    }
-}
-
-static void fix_seams_parts_tb(float *a, float *b)
-{
-    float *ay = a + (131 * 11) * 130 + 1;
-    float *by = b + (0 * 11) * 0 + 1;
-
-    for (int i = 0; i < 131; ++i) {
-        float avg = (*ay + *by)/2.0f;
-        *ay = avg;
-        *by = avg;
-
-        ay += 11;
-        by += 11;
-    }
-}
-
-static void fix_seams(struct worldmap *map, float *vbuf)
-{
-    const int vsize = 131 * 131 * 11;
-    const int isize = 130 * 130 * 6;
-
-    for (int y = 0; y < map->h; ++y) {
-        for (int x = 0; x < map->w; ++x) {
-            float *vbuf1 = &vbuf[vsize * ((y*map->w) + x)];
-
-            if (x < map->w-1) {
-                float *vbuf2 = &vbuf[vsize * ((y*map->w) + x + 1)];
-                fix_seams_parts_lr(vbuf1, vbuf2);
-            }
-            if (y < map->h-1) {
-                float *vbuf2 = &vbuf[vsize * (((y+1)*map->w) + x)];
-                fix_seams_parts_tb(vbuf1, vbuf2);
-            }
-        }
-    }
-}
-
 static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, uint16_t *indices)
 {
     int vptr = 0;
-    float vsize = (float)(131 - 1);
+    float vsize = (float)(129 - 1);
     
-    int indices_size = 6 * (131-1) * (131-1);
+    int indices_size = 6 * (129-1) * (129-1);
 
     float offsetx = scale;
     float offsety = scale;
 
-    for (int y = 0; y < 131; ++y) {
-        uint16_t *ptr = &gfx[stride * y];
-        for (int x = 0; x < 131; ++x) {
-            uint16_t pixel = ptr[x];
-            //hmm_vec3 normal = get_normal(gfx, x, y, w, h);
+    for (int y = 0; y < 129; ++y) {
+        uint16_t *ptr = &gfx[stride * (y+1)];
+        for (int x = 0; x < 129; ++x) {
+            uint16_t pixel = ptr[x+1];
+            hmm_vec3 normal = get_normal(gfx, x+1, y+1, 131*2, 131*2);
 
             //vertices
             verts[vptr * 11 + 0] = ((float)x / vsize) * offsetx;
@@ -135,9 +66,9 @@ static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, 
             verts[vptr * 11 + 2] = (float)y / vsize * offsety;
 
             //normals
-            verts[vptr * 11 + 3] = 77.7f;
-            verts[vptr * 11 + 4] = 66.6f;
-            verts[vptr * 11 + 5] = 55.5f;
+            verts[vptr * 11 + 3] = normal.X;
+            verts[vptr * 11 + 4] = normal.Y;
+            verts[vptr * 11 + 5] = normal.Z;
 
             //UVs
             verts[vptr * 11 + 6] = ((float)x / vsize);
@@ -153,11 +84,11 @@ static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, 
 
     vptr = 0;
 
-    for (int y = 0; y < 131-1; ++y) {
-        for (int x = 0; x < 131-1; ++x) {
-            int tl = (y * 131) + x;
+    for (int y = 0; y < 129-1; ++y) {
+        for (int x = 0; x < 129-1; ++x) {
+            int tl = (y * 129) + x;
             int tr = tl + 1;
-            int bl = (y+1) * 131 + x;
+            int bl = (y+1) * 129 + x;
             int br = bl + 1;
 
             indices[vptr++] = tl;
@@ -193,8 +124,8 @@ static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, 
 
 static int load_map(const char *fn, int w, int h, struct worldmap *map) {
     const int maxsize = 131 * 131 * 2;
-    const int vbufsize = 131 * 131 * 11;
-    const int ibufsize = 130 * 130 * 6;
+    const int vbufsize = 129 * 129 * 11;
+    const int ibufsize = 128 * 128 * 6;
 
     int stride = 131 * w;
     int bindex = 0;
@@ -241,11 +172,9 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
             uint16_t *ibuf = &indices[ibufsize * offset];
 
             generate_vbuf(map->scale, pptr, stride, vbuf, ibuf);
-            fill_normals(vbuf, pixels, x, y, w, h);
+            //fill_normals(vbuf, pixels, x, y, w, h);
         }
     }
-
-    fix_seams(map, verts);
 
     int idx = 0;
     for (int y = 0; y < h; ++y) {
