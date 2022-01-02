@@ -1,11 +1,10 @@
 #include "heightmap.h"
-#include "hmm.h"
 #include "extrahmm.h"
 
 #include <stdio.h>
 #include <string.h>
 
-#define SCALEH 700.0f
+#define SCALEH 600.0f
 
 inline static float get_height(uint16_t pixel)
 {
@@ -58,7 +57,7 @@ static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, 
         uint16_t *ptr = &gfx[stride * (y+1)];
         for (int x = 0; x < 129; ++x) {
             uint16_t pixel = ptr[x+1];
-            hmm_vec3 normal = get_normal(gfx, x+1, y+1, 131*2, 131*2);
+            hmm_vec3 normal = get_normal(gfx, x+1, y+1, 131, 131);
 
             //vertices
             verts[vptr * 11 + 0] = ((float)x / vsize) * offsetx;
@@ -127,11 +126,10 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
     const int vbufsize = 129 * 129 * 11;
     const int ibufsize = 128 * 128 * 6;
 
-    int stride = 131 * w;
+    int stride = 131;
     int bindex = 0;
     int ret = -1;
     char path[0x1000];
-    uint16_t *pixels = malloc(maxsize * w * h);
     uint16_t *indices = malloc(ibufsize * w * h * sizeof(uint16_t));
     float *verts = malloc(vbufsize * w * h * sizeof(float));
 
@@ -154,12 +152,9 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
                 goto freepixels;
             }
 
-            for (int line = 0; line < 131; ++line) {
-                int offset = ((stride * 131 * y) + 131*x) + (line * stride);
-                uint16_t *pptr = &pixels[offset];
-                fread(pptr, 2, 131, f);
-            }
-
+            uint16_t *pixels = malloc(maxsize);
+            map->hmap[y][x] = pixels;
+            fread(pixels, 1, maxsize, f);
             fclose(f);
         }
     }
@@ -167,12 +162,11 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
             int offset = ((y*w) + x);
-            uint16_t *pptr = &pixels[(stride * 131 * y) + 131*x];
+            uint16_t *pptr = map->hmap[y][x];
             float *vbuf = &verts[vbufsize * offset];
             uint16_t *ibuf = &indices[ibufsize * offset];
 
             generate_vbuf(map->scale, pptr, stride, vbuf, ibuf);
-            //fill_normals(vbuf, pixels, x, y, w, h);
         }
     }
 
@@ -180,7 +174,7 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
             int offset = ((y*w) + x);
-            
+
             map->vbuffers[idx] = sg_make_buffer(&(sg_buffer_desc) {
                 .data.ptr = &verts[vbufsize * offset],
                 .data.size = vbufsize * sizeof(float),
@@ -203,7 +197,7 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
     ret = 0;
 
 freepixels:
-    free(pixels);
+    //free(pixels);
     free(indices);
     free(verts);
 
@@ -245,3 +239,23 @@ int worldmap_init(struct worldmap *map, const char *fn)
 
     return 0;
 }
+
+bool worldmap_isunder(struct worldmap *map, hmm_vec3 pos)
+{
+    if (pos.X < 0 || pos.Z < 0)
+        return false;
+
+    float x = pos.X / map->scale;
+    float y = pos.Z / map->scale;
+    int xi = (int)x;
+    int yi = (int)y;
+    int xp = (int)((x - xi) * 130);
+    int yp = (int)((y - yi) * 130);
+    uint16_t *hmap = map->hmap[yi][xi];
+
+    uint16_t hp = hmap[yp * 131 + xp];
+    float hf = get_height(hp);// - 50.0f;
+
+    return (pos.Y < hf);
+}
+

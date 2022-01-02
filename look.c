@@ -148,6 +148,7 @@ static inline float bits2float(const bool *bits)
     return (float)in;
 }
 
+#define MAX_RAY 600
 
 static void do_imgui_frame(int w, int h, double delta)
 {
@@ -172,18 +173,10 @@ static void do_imgui_frame(int w, int h, double delta)
         calc_lightmatrix();
     }
 
+    m2.cam = cam.pos;
+    m2.map = &fi.map;
     hmm_vec3 mray = mouse2ray(&m2);
-    hmm_vec3 targ = cam.pos;
-    int c = 0;
-    while (c++ < 100) {
-        hmm_vec3 tmp = HMM_MultiplyVec3f(mray, 2.0f);
-        targ = HMM_AddVec3(tmp, targ);
-
-        if (fabsf(targ.Y) > 5.0f)
-            break;
-    }
-
-    cubespos[9] = targ;
+    cubespos[9] = mray;
     igText("mouse ray: %f, %f, %f", cubespos[9].X, cubespos[9].Y, cubespos[9].Z);
 
     igText("App average %.3f ms/frame (%.1f FPS)", delta, 1000.0f / delta);
@@ -194,7 +187,7 @@ static void do_imgui_frame(int w, int h, double delta)
 
 static void do_frame(struct frameinfo *fi, double delta)
 {
-    hmm_mat4 projection = HMM_Perspective(75.0f, (float)WW/(float)WH, 0.1f, 900.0f);
+    hmm_mat4 projection = HMM_Perspective(75.0f, (float)WW/(float)WH, 0.1f, 2000.0f);
 
     int w, h;
     SDL_GL_GetDrawableSize(sdl.win, &w, &h);
@@ -283,7 +276,7 @@ static void do_frame(struct frameinfo *fi, double delta)
         sg_draw(0, fi->cat.vcount, 1);
     }
     {
-        scale = HMM_Scale(HMM_Vec3(1.0f, 1.0f , 1.0f));
+        scale = HMM_Scale(HMM_Vec3(10.0f, 10.0f , 10.0f));
         hmm_mat4 trans = HMM_Translate(cubespos[9]);
         model = HMM_MultiplyMat4(trans, scale); 
         munis.model = model;
@@ -358,6 +351,7 @@ int main(int argc, char **argv)
     init_imgdummy();
 
     if (obj_load(&fi.cat, "trump/untitled-scene.obj")) {
+    //if (obj_load(&fi.cat, "metin2_map_battlefied/bridge.obj")) {
         fatalerror("couldn't load the fucking cat\n");
         return -1;
     }

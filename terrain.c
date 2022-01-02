@@ -170,7 +170,7 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         for (int x = 0; x < fi->map.w; ++x) {
             sg_apply_bindings(&fi->terrainbind[idx++]);
         
-            munis.model = HMM_Translate(HMM_Vec3(fi->map.scale * x, -50.0f, fi->map.scale * y));
+            munis.model = HMM_Translate(HMM_Vec3(fi->map.scale * x, 0.0f, fi->map.scale * y));
             munis.unormalmat = extrahmm_transpose_inverse_mat3(munis.model);
             fsparm.blendoffset = HMM_Vec2(tx * y, ty * (1-x));
         

@@ -7,6 +7,8 @@
 struct m2world {
     hmm_mat4 projection;
     hmm_mat4 view;
+    hmm_vec3 cam;
+    struct worldmap *map;
     int mx;
     int my;
     int ww;
