@@ -172,7 +172,7 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         
             munis.model = HMM_Translate(HMM_Vec3(fi->map.scale * x, 0.0f, fi->map.scale * y));
             munis.unormalmat = extrahmm_transpose_inverse_mat3(munis.model);
-            fsparm.blendoffset = HMM_Vec2(tx * y, ty * (1-x));
+            fsparm.blendoffset = HMM_Vec2(ty * y, tx * (1-x));
         
             sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
             sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &SG_RANGE(fsparm));

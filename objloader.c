@@ -1,16 +1,105 @@
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 #include "objloader.h"
 #include "texloader.h"
 #include "fast_obj.h"
 #include "hmm.h"
 #include "genshader.h"
+#include "khash.h"
+
 #define fatalerror(...)\
     printf(__VA_ARGS__);\
     exit(-1)
 extern sg_image imgdummy;
 static float *vbuf = 0;
 static int vbufsize = 0;
+
+KHASH_MAP_INIT_STR(vmodelmap, struct model *)
+static khash_t(vmodelmap) vmodel;
+static khash_t(vmodelmap) *vmodelptr;
+
+static struct vmodel_data {
+    struct model *data;
+    char *names;
+    int datasize;
+    int namessize;
+    int datacap;
+    int namescap;
+} vmodel_data;
+
+void vmodel_init()
+{
+    //TODO: get a real number of models or something
+    int datacap = 10 * sizeof(struct model *);
+    int namescap = 0x1000;
+    vmodel_data.data = malloc(datacap);
+    vmodel_data.names = malloc(namescap);
+    vmodel_data.datacap = datacap;
+    vmodel_data.namescap = namescap;
+    vmodel_data.datasize = 0;
+    vmodel_data.namessize = 0;
+
+    vmodelptr = &vmodel;
+}
+
+struct model *vmodel_find(const char *key)
+{
+    struct model *model = 0;
+    khint_t idx = kh_get(vmodelmap, vmodelptr, key);
+    if (idx != kh_end(vmodelptr))
+        model = kh_val(vmodelptr, idx);
+
+    return model;
+}
+
+inline static void vmodel_resize_data(int size)
+{
+    if (!size)
+        size = vmodel_data.datacap * 2;
+    else
+        size += vmodel_data.datacap;
+
+    vmodel_data.data = realloc(vmodel_data.data, size * sizeof(struct model *));
+    assert(vmodel_data.data);
+    vmodel_data.datacap = size;
+}
+
+inline static void vmodel_resize_names(int size)
+{
+    if (!size)
+        size = vmodel_data.namescap * 2;
+    else
+        size += vmodel_data.namescap;
+
+    vmodel_data.names = realloc(vmodel_data.names, size);
+    assert(vmodel_data.names);
+    vmodel_data.namescap = size;
+}
+
+inline static void vmodel_append(const char *key, struct model *model)
+{
+    int namelen = strlen(key);
+    int namecap = vmodel_data.namessize;
+    if (namecap + namelen + 2 >= vmodel_data.namescap)
+        vmodel_resize_names(0);
+
+    strcpy(&vmodel_data.names[namecap], key);
+    namelen = namecap + namelen + 1;
+    vmodel_data.names[namelen] = 0;
+    vmodel_data.namessize = namelen + 1;
+
+    int datacap = vmodel_data.datasize;
+    if (datacap + 1 >= vmodel_data.datacap)
+        vmodel_resize_data(0);
+
+    vmodel_data.data[datacap] = *model;
+    vmodel_data.datasize++;
+
+    int ret;
+    khint_t idx = kh_put(vmodelmap, vmodelptr, &vmodel_data.names[namecap], &ret);
+    kh_value(vmodelptr, idx) = model;
+}
 
 /*
     u16 indices[] = {
@@ -108,6 +197,7 @@ int obj_load(struct model *model, const char *fn)
         return -1;
 
     parse_obj_material(model, mesh);
+    vmodel_append(fn, model);
 
     return 0;
 }

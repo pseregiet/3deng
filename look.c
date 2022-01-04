@@ -17,6 +17,7 @@
 #include "frameinfo.h"
 #include "event.h"
 #include "objloader.h"
+#include "static_object.h"
 #include "terrain.h"
 #include "mouse2world.h"
 #include "shadow.h"
@@ -44,9 +45,6 @@ struct matrix_unis {
     hmm_mat4 projection;
 };
 
-char vs[0x1000];
-char fs[0x1000];
-
 struct camera cam = {
     .yaw = -90.f,
     .pitch = 0,
@@ -64,38 +62,12 @@ hmm_vec3 ldir = {0.5f, 1.0f, 0.3f};
 
 struct m2world m2 = {0};
 
-hmm_vec3 cubespos[10] = {
-
-    {.X= 49.0f,  .Y=-10.0f, .Z= 20.f},
-    {.X= 49.0f,  .Y=-15.0f, .Z= 21.0f},
-    {.X= 49.5f,  .Y=-12.2f, .Z= 25.f},
-    {.X= 49.8f,  .Y=-12.0f, .Z= 31.3f},
-    {.X= 49.4f,  .Y=-10.4f, .Z= 25.f},
-    {.X= 49.7f,  .Y=-13.0f, .Z= 30.f},
-    {.X= 49.3f,  .Y=-12.0f, .Z= 25.f},
-    {.X= 49.5f,  .Y=-12.0f, .Z= 25.f},
-    {.X= 49.5f,  .Y=-10.2f, .Z= 23.f},
-    {.X= 49.3f,  .Y=-11.0f, .Z= 25.f},
-
-};
-
 hmm_vec4 lightspos[4] = {
     {0.7f, 0.2f, 2.0f, 1.0f},
     {2.3f, -3.3f, -4.0f, 1.0f},
     {-4.0f, 2.0f, 12.0f, 1.0f},
     {0.0f, 0.0f, -3.0f, 1.0f}
 };
-hmm_mat4 model_matrix[10];
-
-static void calc_models()
-{
-    float ss = SDL_GetTicks() / 1000.f;
-    for (int i = 0; i < 9; ++i) {
-        hmm_mat4 trans = HMM_Translate(cubespos[i]);
-        hmm_mat4 rotat =  HMM_Rotate((float)SDL_GetTicks()/10 + (i*50), HMM_Vec3(1.0f, 0.3f, 0.5f));
-        model_matrix[i] = HMM_MultiplyMat4(trans, rotat); 
-    }
-}
 
 static int sdl_init()
 {
@@ -172,43 +144,42 @@ static void do_imgui_frame(int w, int h, double delta)
         ldir = cam.front;
         calc_lightmatrix();
     }
-
+/*
     m2.cam = cam.pos;
     m2.map = &fi.map;
     hmm_vec3 mray = mouse2ray(&m2);
     cubespos[9] = mray;
     igText("mouse ray: %f, %f, %f", cubespos[9].X, cubespos[9].Y, cubespos[9].Z);
-
+*/
     igText("App average %.3f ms/frame (%.1f FPS)", delta, 1000.0f / delta);
     igEnd();
 }
 
-
-
 static void do_frame(struct frameinfo *fi, double delta)
 {
+    //rotate static objects...very fucking static, lol
+    for (int i = 0; i < static_objs.count; ++i) {
+        static_objs.data[i].matrix = HMM_MultiplyMat4(static_objs.data[i].matrix,
+                (HMM_Rotate(sinf(SDL_GetTicks() / 1000.f)*360.0f, HMM_Vec3(1.0f, 1.0f, 1.0f))));
+    }
+
     hmm_mat4 projection = HMM_Perspective(75.0f, (float)WW/(float)WH, 0.1f, 2000.0f);
 
     int w, h;
     SDL_GL_GetDrawableSize(sdl.win, &w, &h);
    
-    calc_models();
     shadow_draw();
     sg_end_pass();
 
     sg_begin_default_pass(&fi->pass_action, w, h);
-
     
     hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
     hmm_mat4 vp = HMM_MultiplyMat4(projection, view);
 
-    hmm_mat4 model = {0};//HMM_Translate(HMM_Vec3(0.0, -5.0f, 0.0));
     vs_params_t munis = {
-        .model = model,
         .vp = vp,
     };
 
-    
     draw_terrain(fi, vp, ldir, cam.pos, shadow.lightspace);
     sg_apply_pipeline(fi->mainpip);
 
@@ -268,22 +239,10 @@ static void do_frame(struct frameinfo *fi, double delta)
 
     hmm_mat4 scale;
 
-    float ss = SDL_GetTicks() / 1000.f;
-    for (int i = 0; i < 9; ++i) {
-        munis.model = model_matrix[i];
+    for (int i = 0; i < static_objs.count; ++i) {
+        munis.model = static_objs.data[i].matrix;
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
-
-        sg_draw(0, fi->cat.vcount, 1);
-    }
-    {
-        scale = HMM_Scale(HMM_Vec3(10.0f, 10.0f , 10.0f));
-        hmm_mat4 trans = HMM_Translate(cubespos[9]);
-        model = HMM_MultiplyMat4(trans, scale); 
-        munis.model = model;
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
-
-        sg_draw(0, fi->cat.vcount, 1);
-
+        sg_draw(0, static_objs.data[i].model->vcount, 1);
     }
 
     sg_apply_pipeline(fi->lightpip);
@@ -349,10 +308,16 @@ int main(int argc, char **argv)
     }
 
     init_imgdummy();
+    vmodel_init();
 
     if (obj_load(&fi.cat, "trump/untitled-scene.obj")) {
     //if (obj_load(&fi.cat, "metin2_map_battlefied/bridge.obj")) {
         fatalerror("couldn't load the fucking cat\n");
+        return -1;
+    }
+
+    if (init_static_objects()) {
+        fatalerror("couldn't load the fucking static objects\n");
         return -1;
     }
 
@@ -472,7 +437,7 @@ int main(int argc, char **argv)
     init_terrain();
     fi.modelvbuf = fi.cat.buffer;
     init_shadow();
-    terrain_set_shadowmap(shadow.colormap);
+    terrain_set_shadowmap(shadow.depthmap);
 
     uint64_t now = SDL_GetPerformanceCounter();
     uint64_t last = 0;

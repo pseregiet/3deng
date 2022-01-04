@@ -5,29 +5,17 @@
 
 @vs vs_depth
 uniform vs_depthparams {
-    mat4 lightmat;
     mat4 model;
 };
 in vec3 apos;
 
 void main() {
-    gl_Position = lightmat * model * vec4(apos, 1.0);
+    gl_Position = model * vec4(apos, 1.0);
 }
 @end
 
 @fs fs_depth
-out vec4 fragcolor;
-
-vec4 encodedepth(float v) {
-    vec4 enc = vec4(1.0, 255.0, 65025.0, 16581375.0) * v;
-    enc = fract(enc);
-    float k = 1.0/255.0;
-    enc -= enc.yzww * vec4(k, k, k, 0.0);
-    return enc;
-}
-
 void main() {
-    fragcolor = encodedepth(gl_FragCoord.z);
 }
 @end
 
@@ -121,32 +109,35 @@ uniform sampler2DArray imgdiff;
 uniform sampler2DArray imgspec;
 uniform sampler2DArray imgnorm;
 
+/*
 float decodedepth(vec4 rgba) {
     return dot(rgba, vec4(1.0, 1.0/255.0, 1.0/65025.0, 1.0/16581375.0));
 }
+*/
 
 float shadowcalc(vec4 fragpos_ls) {
     vec3 projcoords = fragpos_ls.xyz / fragpos_ls.w;
     projcoords = projcoords * 0.5 + 0.5;
     float currdepth = projcoords.z;
+    vec2 mapuv = vec2(projcoords);
     
     //float bias = max(0.05 * (1.0 - dot(normal, lightdir)), 0.005);
-    float bias = 0.0;
+    float bias = 0.05;
+
+    if (currdepth >= 0.99)
+        return 0.0;
 
     float shadow = 0.0;
     vec2 texelsize = 1.0 / shadowmap_size;
     for (int x = -1; x <= 1; ++x) {
         for (int y = -1; y <= 1; ++y) {
-            float pcfdepth = decodedepth(texture(shadowmap, projcoords.xy + vec2(x,y) * texelsize));
+            //float pcfdepth = decodedepth(texture(shadowmap, mapuv + vec2(x,y) * texelsize));
+            float pcfdepth = texture(shadowmap, mapuv + vec2(x,y) * texelsize).r;
             shadow += currdepth - bias > pcfdepth ? 1.0 : 0.0;
         }
     }
 
     shadow /= 9.0;
-
-    if (projcoords.z > 1.0)
-        shadow = 0.0;
-    
     return shadow;
 }
 

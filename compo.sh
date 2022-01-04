@@ -23,6 +23,7 @@ FILE="\
     look.c \
     mouse2world.c \
     objloader.c \
+    static_object.c \
     sdl2_imgui.c \
     shaderloader.c \
     sokol_gfx.c \
