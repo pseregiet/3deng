@@ -11,20 +11,19 @@ extern struct frameinfo fi;
 extern hmm_vec3 ldir;
 extern hmm_mat4 model_matrix[10];
 
-hmm_vec3 lipos;
 void calc_lightmatrix()
 {
-    float near = 0.1f;
-    float far = 600.0f;
-    hmm_mat4 lightproject = HMM_Orthographic(-500.f, 500.f, -500.f, 500.0f, near, far);
-    hmm_mat4 lightview = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), HMM_Vec3(0.0f, 1.0f, 0.0f));
+    float near = 0.01f;
+    float far = 1200.0f;
+    hmm_mat4 lightproject = HMM_Orthographic(-600.f, 600.f, -600.f, 600.0f, near, far);
+    hmm_vec3 shadowstart = HMM_MultiplyVec3f(ldir, -250.f);
+    shadowstart = HMM_AddVec3(shadowstart, cam.pos);
+    hmm_mat4 lightview = HMM_LookAt(shadowstart, HMM_AddVec3(shadowstart, ldir), HMM_Vec3(0.0f, 1.0f, 0.0f));
     shadow.lightspace = HMM_MultiplyMat4(lightproject, lightview);
-    lipos = cam.pos;
 }
 
 void init_shadow()
 {
-    calc_lightmatrix();
     sg_image_desc imgdesc = {
         .render_target = true,
         .width = 2048,
@@ -34,6 +33,7 @@ void init_shadow()
         .mag_filter = SG_FILTER_NEAREST,
         .wrap_u = SG_WRAP_CLAMP_TO_BORDER,
         .wrap_v = SG_WRAP_CLAMP_TO_BORDER,
+        .border_color = SG_BORDERCOLOR_OPAQUE_WHITE,
         .sample_count = 1,
     };
 
@@ -94,6 +94,7 @@ void init_shadow()
 
 void shadow_draw()
 {
+    calc_lightmatrix();
     sg_begin_pass(shadow.pass, &shadow.act);
     sg_apply_pipeline(shadow.tpip);
     

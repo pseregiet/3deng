@@ -33,7 +33,7 @@ out INTERFACE {
     vec3 tang_viewpos;
     vec3 tang_fragpos;
     vec4 fragpos_lightspace;
-    //vec3 normal;
+    vec3 normal;
     //vec3 lightdir;
 } inter;
 
@@ -80,6 +80,7 @@ void main() {
     inter.tang_fragpos = TBN * ssfragpos;
 
     gl_Position = vp * vec4(ssfragpos, 1.0);
+    inter.normal = anorm;
 }
 @end
 
@@ -91,6 +92,7 @@ in INTERFACE {
     vec3 tang_viewpos;
     vec3 tang_fragpos;
     vec4 fragpos_lightspace;
+    vec3 normal;
 } inter;
 
 uniform fs_params { 
@@ -122,7 +124,7 @@ float shadowcalc(vec4 fragpos_ls) {
     vec2 mapuv = vec2(projcoords);
     
     //float bias = max(0.05 * (1.0 - dot(normal, lightdir)), 0.005);
-    float bias = 0.05;
+    float bias = 0.00;
 
     if (currdepth >= 0.99)
         return 0.0;
@@ -131,7 +133,6 @@ float shadowcalc(vec4 fragpos_ls) {
     vec2 texelsize = 1.0 / shadowmap_size;
     for (int x = -1; x <= 1; ++x) {
         for (int y = -1; y <= 1; ++y) {
-            //float pcfdepth = decodedepth(texture(shadowmap, mapuv + vec2(x,y) * texelsize));
             float pcfdepth = texture(shadowmap, mapuv + vec2(x,y) * texelsize).r;
             shadow += currdepth - bias > pcfdepth ? 1.0 : 0.0;
         }
@@ -142,7 +143,7 @@ float shadowcalc(vec4 fragpos_ls) {
 }
 
 void main() {
-    vec3 vv = vec3(inter.uv.x*20, inter.uv.y*20, 0.0);
+    vec3 vv = vec3(inter.uv.x*30, inter.uv.y*30, 0.0);
 
     vec3 pixdiff = texture(imgdiff, vv).rgb;
     vec3 pixspec = texture(imgspec, vv).rgb;

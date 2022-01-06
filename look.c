@@ -142,7 +142,7 @@ static void do_imgui_frame(int w, int h, double delta)
 
     if (igButton("Set lightdir", (ImVec2) {100.0f, 100.0f})) {
         ldir = cam.front;
-        calc_lightmatrix();
+        //calc_lightmatrix();
     }
 /*
     m2.cam = cam.pos;
@@ -155,13 +155,17 @@ static void do_imgui_frame(int w, int h, double delta)
     igEnd();
 }
 
+float rottt = 0.0f;
 static void do_frame(struct frameinfo *fi, double delta)
 {
     //rotate static objects...very fucking static, lol
     for (int i = 0; i < static_objs.count; ++i) {
         static_objs.data[i].matrix = HMM_MultiplyMat4(static_objs.data[i].matrix,
-                (HMM_Rotate(sinf(SDL_GetTicks() / 1000.f)*360.0f, HMM_Vec3(1.0f, 1.0f, 1.0f))));
+                (HMM_Rotate(HMM_ToRadians(rottt), HMM_Vec3(1.0f, 1.0f, 1.0f))));
+        rottt += 0.01;
     }
+    if (rottt >= 360.f)
+        rottt=0.f;
 
     hmm_mat4 projection = HMM_Perspective(75.0f, (float)WW/(float)WH, 0.1f, 2000.0f);
 

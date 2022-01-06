@@ -28,30 +28,28 @@ static hmm_vec3 computeTangent(hmm_vec3 pos0, hmm_vec3 pos1, hmm_vec3 pos2, hmm_
 
 int init_terrain()
 {
-    /*
     const char *filesd[] = {
         "terraintex/grass_mix_d.jpg",
-        "terraintex/ground_dry2_d.jpg",
-        "terraintex/snow_mud_d.jpg",
         "terraintex/desert_mud_d.jpg",
+        "terraintex/snow_mud_d.jpg",
+        "terraintex/ground_dry2_d.jpg",
         "terraintex/mntn_dark_d.jpg",
     };
-    */
     const char *filess[] = {
         "terraintex/grass_mix_s.jpg",
-        "terraintex/mntn_dark_s.jpg",
-        "terraintex/snow_mud_s.jpg",
         "terraintex/desert_mud_s.jpg",
+        "terraintex/snow_mud_s.jpg",
+        "terraintex/mntn_dark_s.jpg",
         "terraintex/ground_dry2_s.jpg",
     };
     const char *filesn[] = {
         "terraintex/grass_mix_n.jpg",
-        "terraintex/mntn_dark_n.jpg",
-        "terraintex/snow_mud_n.jpg",
         "terraintex/desert_mud_n.jpg",
+        "terraintex/snow_mud_n.jpg",
+        "terraintex/mntn_dark_n.jpg",
         "terraintex/ground_dry2_n.jpg",
     };
-    
+ /*   
     const char *filesd[] = {
         "terraintex/grass_02_01.png",
         "terraintex/tile01.png",
@@ -59,7 +57,7 @@ int init_terrain()
         "terraintex/field_04.png",
         "terraintex/stone01_01.png"
     };
-    
+   */ 
 
     sg_image imgd;
     sg_image imgs;
@@ -141,7 +139,7 @@ void terrain_set_shadowmap(sg_image shadowmap)
 
 extern hmm_vec3 dirlight_ambi;
 extern hmm_vec3 dirlight_diff;
-extern hmm_vec3 lipos;
+extern hmm_vec3 ldir;
 void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         hmm_vec3 lightpos, hmm_vec3 viewpos, hmm_mat4 lightmatrix)
 {
@@ -151,7 +149,7 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
     vs_params_t munis = {
         .vp = vp,
         .lightpos = lightpos,
-        .lightpos_s = lipos,
+        .lightpos_s = ldir,
         .viewpos = viewpos,
         .lightspace_matrix = lightmatrix,
     };
