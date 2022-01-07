@@ -24,6 +24,7 @@ FILE="\
     mouse2world.c \
     objloader.c \
     static_object.c \
+    growing_allocator.c \
     sdl2_imgui.c \
     shaderloader.c \
     sokol_gfx.c \

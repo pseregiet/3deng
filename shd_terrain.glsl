@@ -47,20 +47,6 @@ uniform vs_params {
     vec3 viewpos;
 };
 
-/*
-mat3 transpose(mat3 mat) {
-    vec3 i0 = mat[0];
-    vec3 i1 = mat[1];
-    vec3 i2 = mat[2];
-
-    return mat3(
-        vec3(i0.x, i1.x, i2.x),
-        vec3(i0.y, i1.y, i2.y),
-        vec3(i0.z, i1.z, i2.z)
-    };
-}
-*/
-
 void main() {
     inter.uv = auv/2;
     mat3 normalmat = mat3(model); //mat3(unormalmat);
@@ -111,12 +97,6 @@ uniform sampler2DArray imgdiff;
 uniform sampler2DArray imgspec;
 uniform sampler2DArray imgnorm;
 
-/*
-float decodedepth(vec4 rgba) {
-    return dot(rgba, vec4(1.0, 1.0/255.0, 1.0/65025.0, 1.0/16581375.0));
-}
-*/
-
 float shadowcalc(vec4 fragpos_ls) {
     vec3 projcoords = fragpos_ls.xyz / fragpos_ls.w;
     projcoords = projcoords * 0.5 + 0.5;
@@ -126,7 +106,7 @@ float shadowcalc(vec4 fragpos_ls) {
     //float bias = max(0.05 * (1.0 - dot(normal, lightdir)), 0.005);
     float bias = 0.00;
 
-    if (currdepth >= 0.99)
+    if (currdepth >= 1.0)
         return 0.0;
 
     float shadow = 0.0;

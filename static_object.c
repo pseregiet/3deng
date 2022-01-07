@@ -40,7 +40,7 @@ static hmm_vec4 staticrot[10] = {
     {.X= 1.0f,    .Y= 1.0f,    .Z= 1.0f,    .W= 90.0f},
     {.X= 1.0f,    .Y= 1.0f,    .Z= 1.0f,    .W= 90.0f},
     {.X= 1.0f,    .Y= 1.0f,    .Z= 1.0f,    .W= 90.0f},
-    {.X= 1.0f,    .Y= 1.0f,    .Z= 1.0f,    .W= 90.0f},
+    {.X= 1.0f,    .Y= 1.0f,    .Z= 1.0f,    .W= 00.0f},
 };
 
 inline static void vector_init(int size)
@@ -82,13 +82,19 @@ inline static hmm_mat4 obj_calc_matrix(hmm_vec3 pos, hmm_vec4 rotation, hmm_vec3
     return HMM_MultiplyMat4(tmp, s);
 }
 
+void static_obj_set_position(int idx, hmm_vec3 pos)
+{
+    static_objs.data[idx].matrix = 
+        obj_calc_matrix(pos, staticrot[idx], staticscale[idx]);
+}
+
 int init_static_objects()
 {
     vector_init(10);
     //TODO, reading from a file or something
     for (int i = 0; i < 10; ++i) {
         struct static_object obj = {
-            .model = vmodel_find("trump/untitled-scene.obj"),
+            .model = vmodel_find("trump"),
             .matrix = obj_calc_matrix(staticpos[i], staticrot[i], staticscale[i]),
         };
         vector_append(&obj);

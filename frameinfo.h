@@ -8,8 +8,6 @@
 #include <stdbool.h>
 
 struct frameinfo {
-    sg_buffer modelvbuf;
-
     sg_pipeline mainpip;
     sg_bindings mainbind;
 
@@ -20,7 +18,6 @@ struct frameinfo {
     sg_bindings terrainbind[4];
 
     sg_pass_action pass_action;
-    struct model cat;
     struct worldmap map;
 
     bool lightsenable[32];

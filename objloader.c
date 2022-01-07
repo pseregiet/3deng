@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include "growing_allocator.h"
 #include "objloader.h"
 #include "texloader.h"
 #include "fast_obj.h"
@@ -20,27 +21,100 @@ static khash_t(vmodelmap) vmodel;
 static khash_t(vmodelmap) *vmodelptr;
 
 static struct vmodel_data {
-    struct model *data;
-    char *names;
-    int datasize;
-    int namessize;
-    int datacap;
-    int namescap;
+    struct growing_alloc models;
+    struct growing_alloc names;
 } vmodel_data;
 
-void vmodel_init()
+void vmodel_kill()
 {
-    //TODO: get a real number of models or something
-    int datacap = 10 * sizeof(struct model *);
-    int namescap = 0x1000;
-    vmodel_data.data = malloc(datacap);
-    vmodel_data.names = malloc(namescap);
-    vmodel_data.datacap = datacap;
-    vmodel_data.namescap = namescap;
-    vmodel_data.datasize = 0;
-    vmodel_data.namessize = 0;
+    growing_alloc_kill(&vmodel_data.models);
+    growing_alloc_kill(&vmodel_data.names);
+}
 
+static int vmodel_append(const char *fp, const char *name)
+{
+    int namelen = strlen(name);
+    char *newname = growing_alloc_get(&vmodel_data.names, namelen+1);
+    assert(newname);
+    memcpy(newname, name, namelen);
+    newname[namelen] = 0;
+
+    struct model *model = (struct model *)growing_alloc_get(&vmodel_data.models, sizeof(struct model));
+    assert(model);
+
+    if (obj_load(model, fp))
+        return -1;
+
+    int ret;
+    khint_t idx = kh_put(vmodelmap, vmodelptr, newname, &ret);
+    kh_value(vmodelptr, idx) = model;
+
+    return 0;
+}
+
+int vmodel_get_key_value(int idx, struct model const **model, char const **name)
+{
+    if (!kh_exist(vmodelptr, idx))
+        return -1;
+
+    *model = kh_val(vmodelptr, idx);
+    *name = kh_key(vmodelptr, idx);
+    return 0;
+}
+
+int vmodel_init()
+{
     vmodelptr = &vmodel;
+
+    FILE *f = fopen("models.txt", "r");
+    if (!f) {
+        printf("Can't open models.txt\n");
+        return -1;
+    }
+
+    assert(!growing_alloc_init(&vmodel_data.models, sizeof(struct model) * 2, 1));
+    assert(!growing_alloc_init(&vmodel_data.names, 0, 1));
+
+    char line[0x1000];
+    int linecount = 1;
+    while (1) {
+        line[0] = 0;
+        fgets(line, 0x1000, f);
+        if (!line[0] || line[0] == '#')
+            break;
+
+        char *fp = line;
+        char *name = 0;
+
+        int c = 0;
+        while (1) {
+            if (!line[c])
+                break;
+
+            if (line[c] == ':') {
+                line[c] = 0;
+                name = &line[c+1];
+            }
+
+            if (line[c] == '\n') {
+                line[c] = 0;
+                break;
+            }
+            c++;
+        }
+
+        if (!name) {
+            printf("models.txt error on line %d\n", linecount);
+            continue;
+        }
+
+        if (vmodel_append(fp, name)) {
+            printf("Loading model %s failed\n", fp);
+            return -1;
+        }
+    }
+
+    return 0;
 }
 
 struct model *vmodel_find(const char *key)
@@ -52,55 +126,6 @@ struct model *vmodel_find(const char *key)
 
     return model;
 }
-
-inline static void vmodel_resize_data(int size)
-{
-    if (!size)
-        size = vmodel_data.datacap * 2;
-    else
-        size += vmodel_data.datacap;
-
-    vmodel_data.data = realloc(vmodel_data.data, size * sizeof(struct model *));
-    assert(vmodel_data.data);
-    vmodel_data.datacap = size;
-}
-
-inline static void vmodel_resize_names(int size)
-{
-    if (!size)
-        size = vmodel_data.namescap * 2;
-    else
-        size += vmodel_data.namescap;
-
-    vmodel_data.names = realloc(vmodel_data.names, size);
-    assert(vmodel_data.names);
-    vmodel_data.namescap = size;
-}
-
-inline static void vmodel_append(const char *key, struct model *model)
-{
-    int namelen = strlen(key);
-    int namecap = vmodel_data.namessize;
-    if (namecap + namelen + 2 >= vmodel_data.namescap)
-        vmodel_resize_names(0);
-
-    strcpy(&vmodel_data.names[namecap], key);
-    namelen = namecap + namelen + 1;
-    vmodel_data.names[namelen] = 0;
-    vmodel_data.namessize = namelen + 1;
-
-    int datacap = vmodel_data.datasize;
-    if (datacap + 1 >= vmodel_data.datacap)
-        vmodel_resize_data(0);
-
-    vmodel_data.data[datacap] = *model;
-    vmodel_data.datasize++;
-
-    int ret;
-    khint_t idx = kh_put(vmodelmap, vmodelptr, &vmodel_data.names[namecap], &ret);
-    kh_value(vmodelptr, idx) = model;
-}
-
 /*
     u16 indices[] = {
         0, 1, 2,
@@ -197,8 +222,6 @@ int obj_load(struct model *model, const char *fn)
         return -1;
 
     parse_obj_material(model, mesh);
-    vmodel_append(fn, model);
-
     return 0;
 }
 

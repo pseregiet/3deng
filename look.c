@@ -122,6 +122,27 @@ static inline float bits2float(const bool *bits)
 
 #define MAX_RAY 600
 
+static void imgui_static_objs()
+{
+    igBegin("Static objects", NULL, 0);
+    static int selected = 0;
+    if (igBeginListBox("Select model", (ImVec2){0.0f,0.0f})) {
+        for (int i = 1; i < 3; ++i) {
+            const bool isselected = (selected == i);
+            const char *name = 0;
+            const struct model *model = 0;
+            vmodel_get_key_value(i, &model, &name);
+
+            if (igSelectable_Bool(name, isselected, ImGuiSelectableFlags_None, (ImVec2){0.0f,0.0f}))
+                selected = i;
+        }
+        igEndListBox();
+    }
+    
+    igText("selected: %d", selected);
+    igEnd();
+}
+
 static void do_imgui_frame(int w, int h, double delta)
 {
     simgui_new_frame(w, h, delta);
@@ -142,24 +163,25 @@ static void do_imgui_frame(int w, int h, double delta)
 
     if (igButton("Set lightdir", (ImVec2) {100.0f, 100.0f})) {
         ldir = cam.front;
-        //calc_lightmatrix();
     }
-/*
+
     m2.cam = cam.pos;
     m2.map = &fi.map;
     hmm_vec3 mray = mouse2ray(&m2);
-    cubespos[9] = mray;
-    igText("mouse ray: %f, %f, %f", cubespos[9].X, cubespos[9].Y, cubespos[9].Z);
-*/
+    static_obj_set_position(9, mray);
+    igText("Picked position: %f, %f, %f", mray.X, mray.Y, mray.Z);
+
     igText("App average %.3f ms/frame (%.1f FPS)", delta, 1000.0f / delta);
     igEnd();
+
+    imgui_static_objs();
 }
 
 float rottt = 0.0f;
 static void do_frame(struct frameinfo *fi, double delta)
 {
     //rotate static objects...very fucking static, lol
-    for (int i = 0; i < static_objs.count; ++i) {
+    for (int i = 0; i < static_objs.count - 1; ++i) {
         static_objs.data[i].matrix = HMM_MultiplyMat4(static_objs.data[i].matrix,
                 (HMM_Rotate(HMM_ToRadians(rottt), HMM_Vec3(1.0f, 1.0f, 1.0f))));
         rottt += 0.01;
@@ -239,11 +261,13 @@ static void do_frame(struct frameinfo *fi, double delta)
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_spot_light, &SG_RANGE(fs_spot_light));
 
-    sg_apply_bindings(&fi->mainbind);
 
     hmm_mat4 scale;
 
     for (int i = 0; i < static_objs.count; ++i) {
+        obj_bind(static_objs.data[i].model, &fi->mainbind);
+        sg_apply_bindings(&fi->mainbind);
+        
         munis.model = static_objs.data[i].matrix;
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
         sg_draw(0, static_objs.data[i].model->vcount, 1);
@@ -314,12 +338,6 @@ int main(int argc, char **argv)
     init_imgdummy();
     vmodel_init();
 
-    if (obj_load(&fi.cat, "trump/untitled-scene.obj")) {
-    //if (obj_load(&fi.cat, "metin2_map_battlefied/bridge.obj")) {
-        fatalerror("couldn't load the fucking cat\n");
-        return -1;
-    }
-
     if (init_static_objects()) {
         fatalerror("couldn't load the fucking static objects\n");
         return -1;
@@ -354,7 +372,6 @@ int main(int argc, char **argv)
         .cull_mode = SG_CULLMODE_FRONT,
     });
 
-    obj_bind(&fi.cat, &fi.mainbind);
 
     float vertices[36*3] =
     {
@@ -439,7 +456,6 @@ int main(int argc, char **argv)
     };
 
     init_terrain();
-    fi.modelvbuf = fi.cat.buffer;
     init_shadow();
     terrain_set_shadowmap(shadow.depthmap);
 

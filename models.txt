@@ -1,0 +1,2 @@
+trump/untitled-scene.obj:trump
+metin2_map_battlefied/bridge.obj:bridge

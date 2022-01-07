@@ -41,7 +41,6 @@ void init_shadow()
     imgdesc.pixel_format = SG_PIXELFORMAT_DEPTH;
     shadow.depthmap = sg_make_image(&imgdesc);
 
-    shadow.mbind.vertex_buffers[0] = fi.modelvbuf;
 
     sg_shader shd_depth = sg_make_shader(shddepth_shader_desc(SG_BACKEND_GLCORE33));
 
@@ -119,9 +118,11 @@ void shadow_draw()
     }
 
     sg_apply_pipeline(shadow.pip);
-    sg_apply_bindings(&shadow.mbind);
 
     for (int i = 0; i < static_objs.count; ++i) {
+        shadow.mbind.vertex_buffers[0] = static_objs.data[i].model->buffer;
+        sg_apply_bindings(&shadow.mbind);
+        
         unis.model = HMM_MultiplyMat4(shadow.lightspace, static_objs.data[i].matrix);
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(unis));
         sg_draw(0, static_objs.data[i].model->vcount, 1);

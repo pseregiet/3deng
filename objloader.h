@@ -15,7 +15,9 @@ struct model {
 int obj_load(struct model *model, const char *fn);
 void obj_bind(struct model *model, sg_bindings *bind);
 
-void vmodel_init();
+int vmodel_init();
+void vmodel_kill();
+int vmodel_get_key_value(int idx, struct model const **model, char const **name);
 struct model *vmodel_find(const char *key);
 
 #endif
