@@ -3,12 +3,14 @@
 
 #include "hmm.h"
 #include "stdbool.h"
+#include "static_object.h"
 
 struct m2world {
     hmm_mat4 projection;
     hmm_mat4 view;
     hmm_vec3 cam;
     struct worldmap *map;
+    struct static_object obj;
     int mx;
     int my;
     int ww;

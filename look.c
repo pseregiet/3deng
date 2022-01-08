@@ -120,26 +120,39 @@ static inline float bits2float(const bool *bits)
     return (float)in;
 }
 
-#define MAX_RAY 600
-
 static void imgui_static_objs()
 {
     igBegin("Static objects", NULL, 0);
-    static int selected = 0;
+    static int new_selected = 0;
     if (igBeginListBox("Select model", (ImVec2){0.0f,0.0f})) {
         for (int i = 1; i < 3; ++i) {
-            const bool isselected = (selected == i);
+            const bool isselected = (new_selected == i);
             const char *name = 0;
             const struct model *model = 0;
             vmodel_get_key_value(i, &model, &name);
 
+            if (igSelectable_Bool(name, isselected, ImGuiSelectableFlags_None, (ImVec2){0.0f,0.0f})) {
+                new_selected = i;
+                m2.obj.model = (struct model *)model;
+            }
+        }
+        igEndListBox();
+    }
+
+    static int placed_selected = 0;
+    if (igBeginListBox("Placed objects", (ImVec2){0.0f,0.0f})) {
+        for (int i = 0; i < static_objs.count; ++i) {
+            const bool isselected = (placed_selected == i);
+            const struct model *model = static_objs.data[i].model;
+            char name[0x20];
+            sprintf(name, "some model %d", i);
+
             if (igSelectable_Bool(name, isselected, ImGuiSelectableFlags_None, (ImVec2){0.0f,0.0f}))
-                selected = i;
+                placed_selected = i;
         }
         igEndListBox();
     }
     
-    igText("selected: %d", selected);
     igEnd();
 }
 
@@ -168,7 +181,7 @@ static void do_imgui_frame(int w, int h, double delta)
     m2.cam = cam.pos;
     m2.map = &fi.map;
     hmm_vec3 mray = mouse2ray(&m2);
-    static_obj_set_position(9, mray);
+    static_obj_set_position(&m2.obj, mray);
     igText("Picked position: %f, %f, %f", mray.X, mray.Y, mray.Z);
 
     igText("App average %.3f ms/frame (%.1f FPS)", delta, 1000.0f / delta);
@@ -181,7 +194,7 @@ float rottt = 0.0f;
 static void do_frame(struct frameinfo *fi, double delta)
 {
     //rotate static objects...very fucking static, lol
-    for (int i = 0; i < static_objs.count - 1; ++i) {
+    for (int i = 0; i < static_objs.count; ++i) {
         static_objs.data[i].matrix = HMM_MultiplyMat4(static_objs.data[i].matrix,
                 (HMM_Rotate(HMM_ToRadians(rottt), HMM_Vec3(1.0f, 1.0f, 1.0f))));
         rottt += 0.01;
@@ -271,6 +284,14 @@ static void do_frame(struct frameinfo *fi, double delta)
         munis.model = static_objs.data[i].matrix;
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
         sg_draw(0, static_objs.data[i].model->vcount, 1);
+    }
+    if (m2.obj.model) {
+        obj_bind(m2.obj.model, &fi->mainbind);
+        sg_apply_bindings(&fi->mainbind);
+
+        munis.model = m2.obj.matrix;
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
+        sg_draw(0, m2.obj.model->vcount, 1);
     }
 
     sg_apply_pipeline(fi->lightpip);

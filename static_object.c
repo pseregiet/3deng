@@ -18,7 +18,7 @@ static hmm_vec3 staticpos[10] = {
 };
 
 static hmm_vec3 staticscale[10] = {
-    {.X= 10.0f,    .Y= 10.0f,    .Z= 10.0f},
+    {.X= 1.0f,    .Y= 1.0f,    .Z= 1.0f},
     {.X= 10.0f,    .Y= 10.0f,    .Z= 10.0f},
     {.X= 10.0f,    .Y= 10.0f,    .Z= 10.0f},
     {.X= 10.0f,    .Y= 10.0f,    .Z= 10.0f},
@@ -82,10 +82,10 @@ inline static hmm_mat4 obj_calc_matrix(hmm_vec3 pos, hmm_vec4 rotation, hmm_vec3
     return HMM_MultiplyMat4(tmp, s);
 }
 
-void static_obj_set_position(int idx, hmm_vec3 pos)
+void static_obj_set_position(struct static_object *obj, hmm_vec3 pos)
 {
-    static_objs.data[idx].matrix = 
-        obj_calc_matrix(pos, staticrot[idx], staticscale[idx]);
+    obj->matrix = 
+        obj_calc_matrix(pos, staticrot[0], staticscale[0]);
 }
 
 int init_static_objects()

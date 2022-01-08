@@ -244,6 +244,10 @@ bool worldmap_isunder(struct worldmap *map, hmm_vec3 pos)
 {
     if (pos.X < 0 || pos.Z < 0)
         return false;
+    if (pos.X >= map->scale * map->w)
+        return false;
+    if (pos.Z >= map->scale * map->h)
+        return false;
 
     float x = pos.X / map->scale;
     float y = pos.Z / map->scale;

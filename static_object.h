@@ -17,7 +17,7 @@ struct vector_static_object {
 
 extern struct vector_static_object static_objs;
 int init_static_objects();
-void static_obj_set_position(int idx, hmm_vec3 pos);
+void static_obj_set_position(struct static_object *obj, hmm_vec3 pos);
 
 #endif
 
