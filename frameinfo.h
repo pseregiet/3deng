@@ -5,16 +5,13 @@
 #include "../sokol/sokol_gfx.h"
 #include "objloader.h"
 #include "heightmap.h"
+#include "pipelines.h"
 #include <stdbool.h>
 
 struct frameinfo {
-    sg_pipeline mainpip;
+    struct pipelines pipes;
     sg_bindings mainbind;
-
-    sg_pipeline lightpip;
     sg_bindings lightbind;
-
-    sg_pipeline terrainpip;
     sg_bindings terrainbind[4];
 
     sg_pass_action pass_action;

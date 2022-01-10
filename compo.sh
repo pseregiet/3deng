@@ -21,6 +21,9 @@ FILE="\
     event.c \
     fast_obj.c \
     look.c \
+    pipelines.c \
+    lightcube.c \
+    hitbox.c \
     mouse2world.c \
     objloader.c \
     static_object.c \
@@ -37,9 +40,11 @@ FILE="\
     extrahmm.c \
 "
 
-echo "Compile combo.glsl"
-sokol-shdc --input combo.glsl --output genshader.h --slang glsl330
-echo "Compile shdterrain.glsl"
+echo "Compile shd_combo.glsl"
+sokol-shdc --input shd_combo.glsl --output genshd_combo.h --slang glsl330
+echo "Compile shd_terrain.glsl"
 sokol-shdc --input shd_terrain.glsl --output genshd_terrain.h --slang glsl330
+echo "Compile shd_hitboxcube.glsl"
+sokol-shdc --input shd_hitboxcube.glsl --output genshd_hitboxcube.h --slang glsl330
 echo "Build the engine"
 $COMP $OPTS $FILE $LIBS && ./a.out

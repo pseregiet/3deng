@@ -9,9 +9,8 @@ struct frameshadow shadow;
 extern struct camera cam;
 extern struct frameinfo fi;
 extern hmm_vec3 ldir;
-extern hmm_mat4 model_matrix[10];
 
-void calc_lightmatrix()
+static void calc_lightmatrix()
 {
     float near = 0.01f;
     float far = 1200.0f;
@@ -22,7 +21,28 @@ void calc_lightmatrix()
     shadow.lightspace = HMM_MultiplyMat4(lightproject, lightview);
 }
 
-void init_shadow()
+sg_pipeline shadow_create_pipeline(int stride, bool cullfront, bool ibuf)
+{
+    int cull = cullfront ? SG_CULLMODE_FRONT : SG_CULLMODE_BACK;
+    int imode = ibuf ? SG_INDEXTYPE_UINT16 : SG_INDEXTYPE_NONE;
+
+    sg_pipeline pipe = sg_make_pipeline(&(sg_pipeline_desc){
+        .shader = shadow.shd,
+        .layout = {
+            .buffers[ATTR_vs_depth_apos] = {.stride = stride }, //8 * sizeof(float) },
+            .attrs[ATTR_vs_depth_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
+        },
+        .depth = {
+            .pixel_format = SG_PIXELFORMAT_DEPTH,
+            .compare = SG_COMPAREFUNC_LESS_EQUAL,
+            .write_enabled = true,
+        },
+        .cull_mode = cull,
+        .index_type = imode,
+    });
+}
+
+int shadowmap_init()
 {
     sg_image_desc imgdesc = {
         .render_target = true,
@@ -42,64 +62,38 @@ void init_shadow()
     shadow.depthmap = sg_make_image(&imgdesc);
 
 
-    sg_shader shd_depth = sg_make_shader(shddepth_shader_desc(SG_BACKEND_GLCORE33));
-
-    shadow.pip = sg_make_pipeline(&(sg_pipeline_desc){
-        .shader = shd_depth,
-        .layout = {
-            .buffers[ATTR_vs_depth_apos] = {.stride = 8 * sizeof(float) },
-            .attrs[ATTR_vs_depth_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
-        },
-        .depth = {
-            .pixel_format = SG_PIXELFORMAT_DEPTH,
-            .compare = SG_COMPAREFUNC_LESS_EQUAL,
-            .write_enabled = true,
-        },
-        //.color_count = 1,
-        //.colors[0] = {
-        //    .write_mask = SG_COLORMASK_RGB
-        //},
-        .cull_mode = SG_CULLMODE_BACK,
-    });
-    
-    shadow.tpip = sg_make_pipeline(&(sg_pipeline_desc){
-        .shader = shd_depth,
-        .index_type = SG_INDEXTYPE_UINT16,
-        .layout = {
-            .buffers[ATTR_vs_depth_apos] = {.stride = 11 * sizeof(float) },
-            .attrs[ATTR_vs_depth_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
-        },
-        .depth = {
-            .pixel_format = SG_PIXELFORMAT_DEPTH,
-            .compare = SG_COMPAREFUNC_LESS_EQUAL,
-            .write_enabled = true,
-        },
-        //.color_count = 1,
-        //.colors[0] = {
-        //    .write_mask = SG_COLORMASK_RGB
-        //},
-        .cull_mode = SG_CULLMODE_FRONT,
-    });
-
+    shadow.shd = sg_make_shader(shddepth_shader_desc(SG_BACKEND_GLCORE33));
+    shadow.pip = shadow_create_pipeline((8 * sizeof(float)), false, false);
+    shadow.tpip = shadow_create_pipeline((11 * sizeof(float)), true, true);
     shadow.act = (sg_pass_action){
         //.colors[0] = { .action = SG_ACTION_CLEAR, .value = {1.0f, 1.0f, 1.0f, 1.0f } },
     };
-
     shadow.pass = sg_make_pass(&(sg_pass_desc) {
         .color_attachments[0].image = shadow.colormap,
         .depth_stencil_attachment.image = shadow.depthmap,
     });
+
+    return 0;
 }
 
-void shadow_draw()
+void shadowmap_kill()
+{
+    sg_destroy_pipeline(shadow.pip);
+    sg_destroy_pipeline(shadow.tpip);
+    sg_destroy_shader(shadow.shd);
+    sg_destroy_image(shadow.colormap);
+    sg_destroy_image(shadow.depthmap);
+    sg_destroy_pass(shadow.pass);
+}
+
+
+void shadowmap_draw()
 {
     calc_lightmatrix();
     sg_begin_pass(shadow.pass, &shadow.act);
     sg_apply_pipeline(shadow.tpip);
     
-    vs_depthparams_t unis = {
-        //.lightmat = shadow.lightspace,
-    };
+    vs_depthparams_t unis;
 
     int i = 0;
     for (int y = 0; y < fi.map.h; ++y) {
@@ -127,4 +121,7 @@ void shadow_draw()
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(unis));
         sg_draw(0, static_objs.data[i].model->vcount, 1);
     }
+
+    sg_end_pass();
 }
+

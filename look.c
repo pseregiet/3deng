@@ -4,6 +4,7 @@
 #define SOKOL_NO_SOKOL_APP
 #include "../sokol/sokol_gfx.h"
 
+#include <assert.h>
 #include <GL/gl.h>
 #include <SDL2/SDL.h>
 #include "hmm.h"
@@ -21,7 +22,8 @@
 #include "terrain.h"
 #include "mouse2world.h"
 #include "shadow.h"
-#include "genshader.h"
+#include "hitbox.h"
+#include "genshd_combo.h"
 #include "sdl2_imgui.h"
 
 #define u16 uint16_t
@@ -190,9 +192,9 @@ static void do_imgui_frame(int w, int h, double delta)
     imgui_static_objs();
 }
 
-float rottt = 0.0f;
-static void do_frame(struct frameinfo *fi, double delta)
+static void do_update(double delta)
 {
+    static float rottt = 0.0f;
     //rotate static objects...very fucking static, lol
     for (int i = 0; i < static_objs.count; ++i) {
         static_objs.data[i].matrix = HMM_MultiplyMat4(static_objs.data[i].matrix,
@@ -201,27 +203,11 @@ static void do_frame(struct frameinfo *fi, double delta)
     }
     if (rottt >= 360.f)
         rottt=0.f;
+}
 
-    hmm_mat4 projection = HMM_Perspective(75.0f, (float)WW/(float)WH, 0.1f, 2000.0f);
-
-    int w, h;
-    SDL_GL_GetDrawableSize(sdl.win, &w, &h);
-   
-    shadow_draw();
-    sg_end_pass();
-
-    sg_begin_default_pass(&fi->pass_action, w, h);
-    
-    hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
-    hmm_mat4 vp = HMM_MultiplyMat4(projection, view);
-
-    vs_params_t munis = {
-        .vp = vp,
-    };
-
-    draw_terrain(fi, vp, ldir, cam.pos, shadow.lightspace);
-    sg_apply_pipeline(fi->mainpip);
-
+static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_t *munis)
+{
+    sg_apply_pipeline(fi->pipes.simpleobj);
     //fs uniforms
     fs_params_t fs_params = {
         .viewpos = cam.pos,
@@ -274,29 +260,32 @@ static void do_frame(struct frameinfo *fi, double delta)
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_spot_light, &SG_RANGE(fs_spot_light));
 
-
-    hmm_mat4 scale;
-
     for (int i = 0; i < static_objs.count; ++i) {
         obj_bind(static_objs.data[i].model, &fi->mainbind);
         sg_apply_bindings(&fi->mainbind);
         
-        munis.model = static_objs.data[i].matrix;
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
+        munis->model = static_objs.data[i].matrix;
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(*munis));
         sg_draw(0, static_objs.data[i].model->vcount, 1);
     }
+
     if (m2.obj.model) {
         obj_bind(m2.obj.model, &fi->mainbind);
         sg_apply_bindings(&fi->mainbind);
 
-        munis.model = m2.obj.matrix;
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
+        munis->model = m2.obj.matrix;
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(*munis));
         sg_draw(0, m2.obj.model->vcount, 1);
     }
 
-    sg_apply_pipeline(fi->lightpip);
+    simpleobj_hitbox_render(fi, munis->vp);
+}
+
+static void do_render_lightcubes(struct frameinfo *fi, double delta, vs_params_t *munis)
+{
+    sg_apply_pipeline(fi->pipes.lightcube);
     sg_apply_bindings(&fi->lightbind);
-    scale = HMM_Scale(HMM_Vec3(0.1, 0.1, 0.1));
+    hmm_mat4 scale = HMM_Scale(HMM_Vec3(0.1, 0.1, 0.1));
     for (int i = 0; i < 4; ++i) {
 
         if (!fi->lightsenable[i])
@@ -309,12 +298,31 @@ static void do_frame(struct frameinfo *fi, double delta)
         };
         hmm_mat4 model = HMM_Translate(pos);
         model = HMM_MultiplyMat4(model, scale);
-        model = HMM_MultiplyMat4(vp, model);
+        model = HMM_MultiplyMat4(munis->vp, model);
         vs_paramsl_t lvs = {model};
 
         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_params, &SG_RANGE(lvs));
         sg_draw(0, 36, 1);
     }
+}
+
+static void do_render(struct frameinfo *fi, double delta)
+{
+    hmm_mat4 projection = HMM_Perspective(75.0f, (float)WW/(float)WH, 0.1f, 2000.0f);
+
+    int w, h;
+    SDL_GL_GetDrawableSize(sdl.win, &w, &h);
+   
+    shadowmap_draw();
+
+    sg_begin_default_pass(&fi->pass_action, w, h);
+    hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
+    hmm_mat4 vp = HMM_MultiplyMat4(projection, view);
+    vs_params_t munis = { .vp = vp };
+    draw_terrain(fi, vp, ldir, cam.pos, shadow.lightspace);
+ 
+    do_render_static_objs(fi, delta, &munis);
+    do_render_lightcubes(fi, delta, &munis);
 
     SDL_GetMouseState(&m2.mx, &m2.my);
     m2.ww = WW;
@@ -332,7 +340,7 @@ static void do_frame(struct frameinfo *fi, double delta)
     SDL_GL_SwapWindow(sdl.win);
 }
 
-static sg_image init_imgdummy()
+static int init_imgdummy()
 {
     char data[4] = {0,0,0,0};
 
@@ -347,6 +355,8 @@ static sg_image init_imgdummy()
             .size = 4,
         },
     });
+
+    return 0;
 }
 
 int main(int argc, char **argv)
@@ -356,43 +366,12 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    init_imgdummy();
-    vmodel_init();
-
-    if (init_static_objects()) {
-        fatalerror("couldn't load the fucking static objects\n");
-        return -1;
-    }
-
-    sg_shader shd = sg_make_shader(comboshader_shader_desc(SG_BACKEND_GLCORE33));
-    sg_shader lightshd = sg_make_shader(light_cube_shader_desc(SG_BACKEND_GLCORE33));
-
-    fi.mainpip = sg_make_pipeline(&(sg_pipeline_desc) {
-        .shader = shd,
-        .color_count = 1,
-        .colors[0] = {
-            .write_mask = SG_COLORMASK_RGB,
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
-        },
-        //.index_type = SG_INDEXTYPE_UINT16,
-        .layout = {
-            .attrs = {
-                [ATTR_vs_position] = {.format = SG_VERTEXFORMAT_FLOAT3},
-                [ATTR_vs_normal] = {.format = SG_VERTEXFORMAT_FLOAT3},
-                [ATTR_vs_texcoord] = {.format = SG_VERTEXFORMAT_FLOAT2},
-            },
-        },
-        .depth = {
-            .compare = SG_COMPAREFUNC_LESS_EQUAL,
-            .write_enabled = true,
-        },
-        .cull_mode = SG_CULLMODE_FRONT,
-    });
-
+    assert(!init_imgdummy());
+    assert(!vmodel_init());
+    assert(!init_static_objects());
+    assert(!pipelines_init(&fi.pipes));
+    assert(!init_terrain());
+    assert(!shadowmap_init());
 
     float vertices[36*3] =
     {
@@ -445,29 +424,6 @@ int main(int argc, char **argv)
         .data.ptr = vertices,
     });
     
-    fi.lightpip = sg_make_pipeline(&(sg_pipeline_desc) {
-        .shader = lightshd,
-        .color_count = 1,
-        .colors[0] = {
-            .write_mask = SG_COLORMASK_RGB,
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
-        },
-        //.index_type = SG_INDEXTYPE_UINT16,
-        .layout = {
-            .attrs = {
-                [ATTR_light_cube_vs_pos] = {.format = SG_VERTEXFORMAT_FLOAT3},
-            },
-        },
-        .depth = {
-            .compare = SG_COMPAREFUNC_LESS_EQUAL,
-            .write_enabled = true,
-        },
-    });
-
     fi.lightbind = (sg_bindings){
         .vertex_buffers[0] = lvbuf,
     };
@@ -476,8 +432,6 @@ int main(int argc, char **argv)
         .colors[0] = {.action = SG_ACTION_CLEAR, .value = {0.0, 0.0, 0.0, 1.0 }},
     };
 
-    init_terrain();
-    init_shadow();
     terrain_set_shadowmap(shadow.depthmap);
 
     uint64_t now = SDL_GetPerformanceCounter();
@@ -489,9 +443,12 @@ int main(int argc, char **argv)
         delta = ((now - last)*1000 / (double)SDL_GetPerformanceFrequency());
 
         do_input(delta);
-        do_frame(&fi, delta);
+        do_update(delta);
+        do_render(&fi, delta);
 
     }
+
+    pipelines_kill(&fi.pipes);
 
     igsdl2_Shutdown();
     sg_shutdown();
@@ -500,5 +457,5 @@ int main(int argc, char **argv)
     SDL_Quit();
 
     return 0;
-
 }
+

@@ -6,6 +6,7 @@
 #include "hmm.h"
 
 struct frameshadow {
+    sg_shader shd;
     sg_bindings tbind;
     sg_bindings mbind;
     sg_pipeline tpip;
@@ -17,9 +18,10 @@ struct frameshadow {
     hmm_mat4 lightspace;
 };
 
-void shadow_draw();
-void init_shadow();
-void calc_lightmatrix();
+void shadowmap_draw();
+int  shadowmap_init();
+void shadowmap_kill();
+sg_pipeline shadow_create_pipeline(int stride, bool cullfront, bool ibuf);
 
 #endif
 

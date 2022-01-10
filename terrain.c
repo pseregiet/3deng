@@ -11,6 +11,7 @@
 
 extern struct frameinfo fi;
 
+/*
 static hmm_vec3 computeTangent(hmm_vec3 pos0, hmm_vec3 pos1, hmm_vec3 pos2, hmm_vec2 uv0, hmm_vec2 uv1, hmm_vec2 uv2) {
     hmm_vec3 edge0 = HMM_SubtractVec3(pos1, pos0);
     hmm_vec3 edge1 = HMM_SubtractVec3(pos2, pos0);
@@ -24,6 +25,39 @@ static hmm_vec3 computeTangent(hmm_vec3 pos0, hmm_vec3 pos1, hmm_vec3 pos2, hmm_
     float z = f * (delta_uv1.Y * edge0.Z - delta_uv0.Y * edge1.Z);
 
     return HMM_Vec3(x, y, z);
+}
+*/
+
+void terrain_pipeline(struct pipelines *pipes)
+{
+    pipes->terrain_shd = sg_make_shader(terrainshd_shader_desc(SG_BACKEND_GLCORE33));
+
+    pipes->terrain = sg_make_pipeline(&(sg_pipeline_desc) {
+        .shader = pipes->terrain_shd,
+        .index_type = SG_INDEXTYPE_UINT16,
+        .color_count = 1,
+        .colors[0] = {
+            .write_mask = SG_COLORMASK_RGB,
+            .blend = {
+                .enabled = true,
+                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+            },
+        },
+        .layout = {
+            .attrs = {
+                [ATTR_vs_terrain_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_terrain_anorm] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_terrain_auv] = {.format = SG_VERTEXFORMAT_FLOAT2},
+                [ATTR_vs_terrain_atang] = {.format = SG_VERTEXFORMAT_FLOAT3},
+            },
+        },
+        .depth = {
+            .compare = SG_COMPAREFUNC_LESS_EQUAL,
+            .write_enabled = true,
+        },
+        .cull_mode = SG_CULLMODE_BACK,
+    });
 }
 
 int init_terrain()
@@ -99,35 +133,6 @@ int init_terrain()
         };
     }
 
-    sg_shader terrainshd = sg_make_shader(terrainshd_shader_desc(SG_BACKEND_GLCORE33));
-
-    fi.terrainpip = sg_make_pipeline(&(sg_pipeline_desc) {
-        .shader = terrainshd,
-        .index_type = SG_INDEXTYPE_UINT16,
-        .color_count = 1,
-        .colors[0] = {
-            .write_mask = SG_COLORMASK_RGB,
-            .blend = {
-                .enabled = true,
-                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
-                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            },
-        },
-        .layout = {
-            .attrs = {
-                [ATTR_vs_terrain_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
-                [ATTR_vs_terrain_anorm] = {.format = SG_VERTEXFORMAT_FLOAT3},
-                [ATTR_vs_terrain_auv] = {.format = SG_VERTEXFORMAT_FLOAT2},
-                [ATTR_vs_terrain_atang] = {.format = SG_VERTEXFORMAT_FLOAT3},
-            },
-        },
-        .depth = {
-            .compare = SG_COMPAREFUNC_LESS_EQUAL,
-            .write_enabled = true,
-        },
-        .cull_mode = SG_CULLMODE_BACK,
-    });
-
     return 0;
 }
 
@@ -143,8 +148,7 @@ extern hmm_vec3 ldir;
 void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         hmm_vec3 lightpos, hmm_vec3 viewpos, hmm_mat4 lightmatrix)
 {
-    hmm_mat4 model = {0};
-    sg_apply_pipeline(fi->terrainpip);
+    sg_apply_pipeline(fi->pipes.terrain);
     
     vs_params_t munis = {
         .vp = vp,

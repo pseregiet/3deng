@@ -6,8 +6,8 @@
 #include "texloader.h"
 #include "fast_obj.h"
 #include "hmm.h"
-#include "genshader.h"
 #include "khash.h"
+#include "genshd_combo.h"
 
 #define fatalerror(...)\
     printf(__VA_ARGS__);\
@@ -18,12 +18,68 @@ static int vbufsize = 0;
 
 KHASH_MAP_INIT_STR(vmodelmap, struct model *)
 static khash_t(vmodelmap) vmodel;
-static khash_t(vmodelmap) *vmodelptr;
 
 static struct vmodel_data {
     struct growing_alloc models;
     struct growing_alloc names;
 } vmodel_data;
+
+//common index buffer for a simple cube
+static sg_buffer cube_index_buffer;
+static void init_cube_index_buffer()
+{
+    uint16_t indices[36] = {
+        // front
+		0, 1, 2,   2, 3, 0,
+		// right
+		1, 5, 6,   6, 2, 1,
+		// back
+		7, 6, 5,   5, 4, 7,
+		// left
+		4, 0, 3,   3, 7, 4,
+		// bottom
+		4, 5, 1,   1, 0, 4,
+		// top
+		3, 2, 6,   6, 7, 3,
+    };
+
+    cube_index_buffer = sg_make_buffer(&(sg_buffer_desc) {
+        .data.size = sizeof(indices),
+        .data.ptr = indices,
+        .type = SG_BUFFERTYPE_INDEXBUFFER,
+    });
+}
+
+void simpleobj_pipeline(struct pipelines *pipes)
+{
+    pipes->simpleobj_shd = sg_make_shader(comboshader_shader_desc(SG_BACKEND_GLCORE33));
+    
+    pipes->simpleobj = sg_make_pipeline(&(sg_pipeline_desc) {
+        .shader = pipes->simpleobj_shd,
+        .color_count = 1,
+        .colors[0] = {
+            .write_mask = SG_COLORMASK_RGB,
+            .blend = {
+                .enabled = true,
+                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+            },
+        },
+        //.index_type = SG_INDEXTYPE_UINT16,
+        .layout = {
+            .attrs = {
+                [ATTR_vs_position] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_normal] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_texcoord] = {.format = SG_VERTEXFORMAT_FLOAT2},
+            },
+        },
+        .depth = {
+            .compare = SG_COMPAREFUNC_LESS_EQUAL,
+            .write_enabled = true,
+        },
+        .cull_mode = SG_CULLMODE_FRONT,
+    });
+}
 
 void vmodel_kill()
 {
@@ -46,25 +102,25 @@ static int vmodel_append(const char *fp, const char *name)
         return -1;
 
     int ret;
-    khint_t idx = kh_put(vmodelmap, vmodelptr, newname, &ret);
-    kh_value(vmodelptr, idx) = model;
+    khint_t idx = kh_put(vmodelmap, &vmodel, newname, &ret);
+    kh_value(&vmodel, idx) = model;
 
     return 0;
 }
 
 int vmodel_get_key_value(int idx, struct model const **model, char const **name)
 {
-    if (!kh_exist(vmodelptr, idx))
+    if (!kh_exist(&vmodel, idx))
         return -1;
 
-    *model = kh_val(vmodelptr, idx);
-    *name = kh_key(vmodelptr, idx);
+    *model = kh_val(&vmodel, idx);
+    *name = kh_key(&vmodel, idx);
     return 0;
 }
 
 int vmodel_init()
 {
-    vmodelptr = &vmodel;
+    init_cube_index_buffer();
 
     FILE *f = fopen("models.txt", "r");
     if (!f) {
@@ -120,24 +176,12 @@ int vmodel_init()
 struct model *vmodel_find(const char *key)
 {
     struct model *model = 0;
-    khint_t idx = kh_get(vmodelmap, vmodelptr, key);
-    if (idx != kh_end(vmodelptr))
-        model = kh_val(vmodelptr, idx);
+    khint_t idx = kh_get(vmodelmap, &vmodel, key);
+    if (idx != kh_end(&vmodel))
+        model = kh_val(&vmodel, idx);
 
     return model;
 }
-/*
-    u16 indices[] = {
-        0, 1, 2,
-        0, 2, 3
-    };
-
-    sg_buffer ibuf = sg_make_buffer(&(sg_buffer_desc) {
-        .data.size = sizeof(indices),
-        .data.ptr = indices,
-        .type = SG_BUFFERTYPE_INDEXBUFFER,
-    });
-*/
 
 static int parse_obj_vertex(struct model *model, fastObjMesh *mesh)
 {
@@ -163,6 +207,12 @@ static int parse_obj_vertex(struct model *model, fastObjMesh *mesh)
                 mesh->position_count, mesh->normal_count, mesh->texcoord_count);
     }
 
+    struct hitbox hitbox = {
+        .x = {INFINITY, -INFINITY},
+        .y = {INFINITY, -INFINITY},
+        .z = {INFINITY, -INFINITY},
+    };
+
     for (int i = 0; i < facecount *3; ++i) {
         fastObjIndex vertex = mesh->indices[i];
 
@@ -174,8 +224,43 @@ static int parse_obj_vertex(struct model *model, fastObjMesh *mesh)
         memcpy(&vbuf[pos + 0], mesh->positions + vpos, 3 * sizeof(float));
         memcpy(&vbuf[pos + 3], mesh->normals + npos, 3 * sizeof(float));
         memcpy(&vbuf[pos + 6], mesh->texcoords + tpos, 2 * sizeof(float));
+
+        if (vbuf[pos + 0] < hitbox.x[0])
+            hitbox.x[0] = vbuf[pos + 0];
+        if (vbuf[pos + 0] > hitbox.x[1])
+            hitbox.x[1] = vbuf[pos + 0];
+
+        if (vbuf[pos + 1] < hitbox.y[0])
+            hitbox.y[0] = vbuf[pos + 1];
+        if (vbuf[pos + 1] > hitbox.y[1])
+            hitbox.y[1] = vbuf[pos + 1];
+
+        if (vbuf[pos + 2] < hitbox.z[0])
+            hitbox.z[0] = vbuf[pos + 2];
+        if (vbuf[pos + 2] > hitbox.z[1])
+            hitbox.z[1] = vbuf[pos + 2];
     }
-    
+
+    float cube_vertices[24] = {
+        // front
+        hitbox.x[1], hitbox.y[0], hitbox.z[0],
+        hitbox.x[1], hitbox.y[0], hitbox.z[1],
+        hitbox.x[0], hitbox.y[0], hitbox.z[1],
+        hitbox.x[0], hitbox.y[0], hitbox.z[0],
+        // back
+        hitbox.x[1], hitbox.y[1], hitbox.z[0],
+        hitbox.x[1], hitbox.y[1], hitbox.z[1],
+        hitbox.x[0], hitbox.y[1], hitbox.z[1],
+        hitbox.x[0], hitbox.y[1], hitbox.z[0],
+    };
+
+    model->hitbox_vbuf = sg_make_buffer(&(sg_buffer_desc) {
+        .data.size = sizeof(cube_vertices),
+        .data.ptr = cube_vertices,
+    });
+    model->hitbox_ibuf = cube_index_buffer;
+
+
     model->buffer = sg_make_buffer(&(sg_buffer_desc) {
         .data.size = datasize,
         .data.ptr = (const void *)vbuf,
