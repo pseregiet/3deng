@@ -7,5 +7,6 @@
 int load_sg_image(const char *fn, sg_image *img);
 void make_sg_image(uint32_t *ptr, int w, int h, sg_image *img);
 int load_sg_image_array(const char **fn, sg_image *img, int count);
+void make_sg_image_16f(float *ptr, int size, int *w, int *h, sg_image *img);
 
 #endif

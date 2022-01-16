@@ -1,0 +1,160 @@
+#include "animobj.h"
+#define SOKOL_NO_SOKOL_APP
+#include "../sokol/sokol_gfx.h"
+#include "genshd_md5.h"
+#include "md5model.h"
+
+static struct md5_model _model;
+static struct md5_anim  _anim;
+static struct animobj _obj;
+static sg_image _boneimg;
+static float *_bonebuf;
+
+#define MAX_BONES 256
+#define MAX_INSTA 1
+
+int animobj_init()
+{
+    struct animobj *obj = &_obj;
+    md5model_open("md5/archvile.md5mesh", &_model);
+    md5anim_open("md5/attack1.md5anim", &_anim);
+    _model.anims = (struct md5_anim **)calloc(1, sizeof(struct md5_anim *));
+    _model.anims[0] = &_anim;
+    _model.acount = 1;
+
+    obj->model = &_model;
+    obj->interp = (struct md5_joint *)calloc(_model.jcount, sizeof(*obj->interp));
+    obj->curanim = 0;
+    obj->curframe = 0;
+    obj->nextframe = 1;
+    obj->lasttime = 0.f;
+
+    sg_image_desc imgdesc = {
+        .width = MAX_BONES * 4,
+        .height = 1,
+        .num_mipmaps = 1,
+        .pixel_format = SG_PIXELFORMAT_RGBA32F,
+        .usage = SG_USAGE_STREAM,
+        .min_filter = SG_FILTER_NEAREST,
+        .mag_filter = SG_FILTER_NEAREST,
+        .wrap_u = SG_WRAP_CLAMP_TO_EDGE,
+        .wrap_v = SG_WRAP_CLAMP_TO_EDGE,
+    };
+    _boneimg = sg_make_image(&imgdesc);
+    
+    _bonebuf = (float *)calloc(sizeof(float) * 4 * 4, MAX_BONES);
+    return 0;
+}
+
+void animobj_uploadbones(const float *data, int size)
+{
+    sg_image_data imgdata = {
+        .subimage[0][0] = {.ptr = data, .size = size},
+    };
+    sg_update_image(_boneimg, &imgdata);
+}
+
+void animobj_render(struct pipelines *pipes, hmm_mat4 vp)
+{
+    sg_apply_pipeline(pipes->animobj);
+
+    for (int i = 0; i < _model.mcount; ++i) {
+        sg_bindings bind = {
+            .vertex_buffers[0] = _model.meshes[i].vbuf,
+            .index_buffer = _model.meshes[i].ibuf,
+            .vs_images[SLOT_weightmap] = _model.weightmap,
+            .vs_images[SLOT_bonemap] = _boneimg,
+        };
+        sg_apply_bindings(&bind);
+
+        vs_md5_t uni = {
+            .mvp = HMM_MultiplyMat4(vp, HMM_Translate(HMM_Vec3(0.0f, 0.0f, 0.f))),
+            .boneuv = {0, 0, MAX_BONES*4, MAX_INSTA},
+            .weightuv = {0, 0, _model.weightw, _model.meshes[i].woffset},
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5, &SG_RANGE(uni));
+
+        sg_draw(0, _model.meshes[i].icount*3, 1);
+    }
+}
+
+void animobj_kill(struct animobj *obj)
+{
+    if (obj->interp)
+        free(obj->interp);
+}
+
+void animobj_pipeline(struct pipelines *pipes)
+{
+    pipes->animobj_shd = sg_make_shader(shdmd5_shader_desc(SG_BACKEND_GLCORE33));
+
+    pipes->animobj = sg_make_pipeline(&(sg_pipeline_desc) {
+        .shader = pipes->animobj_shd,
+        .color_count = 1,
+        .colors[0] = {
+            .write_mask = SG_COLORMASK_RGB,
+            .blend = {
+                .enabled = true,
+                .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
+                .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+            },
+        },
+        .index_type = SG_INDEXTYPE_UINT16,
+        .layout = {
+            .attrs = {
+                [ATTR_vs_md5_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_md5_anorm] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_md5_auv] = {.format = SG_VERTEXFORMAT_FLOAT2},
+                [ATTR_vs_md5_aweight] = {.format = SG_VERTEXFORMAT_SHORT2},
+            },
+        },
+        .depth = {
+            .compare = SG_COMPAREFUNC_LESS_EQUAL,
+            .write_enabled = true,
+        },
+        .cull_mode = SG_CULLMODE_BACK,
+    });
+}
+
+static void animobj_bone2tex(const struct md5_model *mdl, const struct md5_joint *in, float *out, int jcount)
+{
+    for (int i = 0; i < jcount; ++i) {
+        hmm_mat4 m = HMM_QuaternionToMat4(in[i].orient);
+        m.Elements[3][0] = in[i].pos.X;
+        m.Elements[3][1] = in[i].pos.Y;
+        m.Elements[3][2] = in[i].pos.Z;
+        m = HMM_MultiplyMat4(m, mdl->invmatrices[i]);
+        int offset = 16 * i;
+        memcpy(&out[offset], &m, sizeof(float) * 16);
+    }
+}
+
+void animobj_play(double delta)
+{
+    struct animobj *obj = &_obj;
+    if (obj->curanim == -1)
+        return;
+
+    delta /= 1000.0f;
+
+    struct md5_anim *curanim = obj->model->anims[obj->curanim];
+    int maxframes = curanim->fcount;
+    obj->lasttime += delta;
+
+    if (obj->lasttime >= (1.0f / curanim->fps)) {
+        obj->curframe++;
+        obj->nextframe++;
+        obj->lasttime = 0.0f;
+
+        if (obj->curframe >= maxframes)
+            obj->curframe = 0;
+        if (obj->nextframe >= maxframes)
+            obj->nextframe = 0;
+    }
+
+    float interptime = obj->lasttime * curanim->fps;
+    //md5anim_interp(curanim, obj->interp, obj->curframe, obj->nextframe, interptime);
+    struct md5_joint *jf = &curanim->frames[curanim->jcount * obj->curframe];
+    animobj_bone2tex(obj->model, jf, _bonebuf, curanim->jcount);
+    animobj_uploadbones(_bonebuf, sizeof(float) * 4 * 4 * MAX_BONES);
+}

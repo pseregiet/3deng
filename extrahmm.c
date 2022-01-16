@@ -4,6 +4,43 @@
 
 static bool gluInvertMatrix(float m[16], float invOut[16]);
 
+hmm_quat quat_calcw(hmm_quat q)
+{
+    float t = 1.0f - (q.X * q.X) - (q.Y * q.Y) - (q.Z * q.Z);
+    hmm_quat ret = q;
+    if (t < 0.0f)
+        ret.W = 0.0f;
+    else
+        ret.W = -HMM_SquareRootF(t);
+    return ret;
+}
+
+hmm_quat quat_multvec(hmm_quat q, hmm_vec3 v)
+{
+    hmm_quat out;
+    out.W = - (q.X * v.X) - (q.Y * v.Y) - (q.Z * v.Z);
+    out.X =   (q.W * v.X) + (q.Y * v.Z) - (q.Z * v.Y);
+    out.Y =   (q.W * v.Y) + (q.Z * v.X) - (q.X * v.Z);
+    out.Z =   (q.W * v.Z) + (q.X * v.Y) - (q.Y * v.X);
+    return out;
+}
+
+hmm_vec3 quat_rotat(hmm_quat q, hmm_vec3 in)
+{
+    hmm_quat inv = {
+        .X = -q.X,
+        .Y = -q.Y,
+        .Z = -q.Z,
+        .W =  q.W,
+    };
+
+    inv = HMM_NormalizeQuaternion(inv);
+    hmm_quat tmp = quat_multvec(q, in);
+    hmm_quat fin = HMM_MultiplyQuaternion(tmp, inv);
+
+    return HMM_Vec3(fin.X, fin.Y, fin.Z);
+}
+
 hmm_mat4 extrahmm_transpose_inverse_mat3(hmm_mat4 A)
 {
     hmm_mat4 out;
@@ -31,26 +68,13 @@ hmm_mat4 extrahmm_transpose_inverse_mat3(hmm_mat4 A)
 
 hmm_mat4 extrahmm_inverse_mat4(hmm_mat4 src)
 {
-    hmm_mat4 out;
-    float fi[16];
-    float fo[16];
-
-    for (int y = 0; y < 4; ++y)
-        for (int x = 0; x < 4; ++x)
-            fi[y*4+x] = src.Elements[y][x];
-
-    if (!gluInvertMatrix(fi, fo))
-        printf("wtf\n");
-
-    for (int y = 0; y < 4; ++y)
-        for (int x = 0; x < 4; ++x)
-            out.Elements[y][x] = fo[y*4+x];
-
+    hmm_mat4 out = src;
+    gluInvertMatrix((float *)&src, (float *)&out);
     return out;
 }
 
 //from mesa
-static bool gluInvertMatrix(float m[16], float invOut[16])
+inline static bool gluInvertMatrix(float m[16], float invOut[16])
 {
     float inv[16], det;
     int i;

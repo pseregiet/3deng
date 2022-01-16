@@ -1885,6 +1885,17 @@ HMM_INLINE hmm_quaternion HMM_PREFIX(Slerp)(hmm_quaternion Left, float Time, hmm
     hmm_quaternion QuaternionRight;
 
     float Cos_Theta = HMM_PREFIX(DotQuaternion)(Left, Right);
+    
+    if (Cos_Theta > 0.9999f) {
+        float k0 = 1.0f - Time;
+        float k1 = Time;
+        Result.W = (k0 * Left.W) + (k1 * Right.W);
+        Result.X = (k0 * Left.X) + (k1 * Right.X);
+        Result.Y = (k0 * Left.Y) + (k1 * Right.Y);
+        Result.Z = (k0 * Left.Z) + (k1 * Right.Z);
+        return Result;
+    }
+    
     float Angle = HMM_PREFIX(ACosF)(Cos_Theta);
 
     float S1 = HMM_PREFIX(SinF)((1.0f - Time) * Angle);

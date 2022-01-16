@@ -120,6 +120,7 @@ static inline const sg_shader_desc* hitboxcube_shader_desc(sg_backend backend) {
       desc.vs.source = hitboxcube_vs_source_glsl330;
       desc.vs.entry = "main";
       desc.vs.uniform_blocks[0].size = 64;
+      desc.vs.uniform_blocks[0].layout = SG_UNIFORMLAYOUT_STD140;
       desc.vs.uniform_blocks[0].uniforms[0].name = "vs_params";
       desc.vs.uniform_blocks[0].uniforms[0].type = SG_UNIFORMTYPE_FLOAT4;
       desc.vs.uniform_blocks[0].uniforms[0].array_count = 4;

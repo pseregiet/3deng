@@ -20,6 +20,37 @@ void make_sg_image(uint32_t *ptr, int w, int h, sg_image *img)
     });
 }
 
+void make_sg_image_16f(float *ptr, int size, int *w, int *h, sg_image *img)
+{
+    int hi = 0;
+    int wi = 0;
+
+    if (size < 4096) {
+        wi = size;
+        hi = 1;
+    }
+    else {
+        hi = size/4096;
+        wi = 4096;
+    }
+
+    int bytesize = wi * hi * 8;
+    *img = sg_make_image(&(sg_image_desc) {
+        .width = wi,
+        .height = hi,
+        .pixel_format = SG_PIXELFORMAT_RG32F,
+        .min_filter = SG_FILTER_NEAREST,
+        .mag_filter = SG_FILTER_NEAREST,
+        .data.subimage[0][0] = {
+            .ptr = ptr,
+            .size = bytesize,
+        },
+    });
+
+    *w = wi;
+    *h = hi;
+}
+
 int load_sg_image(const char *fn, sg_image *img)
 {
     int w,h,n;

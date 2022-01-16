@@ -23,6 +23,7 @@
 #include "mouse2world.h"
 #include "shadow.h"
 #include "hitbox.h"
+#include "animobj.h"
 #include "genshd_combo.h"
 #include "sdl2_imgui.h"
 
@@ -203,6 +204,8 @@ static void do_update(double delta)
     }
     if (rottt >= 360.f)
         rottt=0.f;
+
+    animobj_play(delta);
 }
 
 static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_t *munis)
@@ -265,6 +268,7 @@ static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_
         sg_apply_bindings(&fi->mainbind);
         
         munis->model = static_objs.data[i].matrix;
+
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(*munis));
         sg_draw(0, static_objs.data[i].model->vcount, 1);
     }
@@ -323,6 +327,7 @@ static void do_render(struct frameinfo *fi, double delta)
  
     do_render_static_objs(fi, delta, &munis);
     do_render_lightcubes(fi, delta, &munis);
+    animobj_render(&fi->pipes, vp);
 
     SDL_GetMouseState(&m2.mx, &m2.my);
     m2.ww = WW;
@@ -372,6 +377,7 @@ int main(int argc, char **argv)
     assert(!pipelines_init(&fi.pipes));
     assert(!init_terrain());
     assert(!shadowmap_init());
+    assert(!animobj_init());
 
     float vertices[36*3] =
     {

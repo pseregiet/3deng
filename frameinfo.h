@@ -3,6 +3,7 @@
 
 #define SOKOL_NO_SOKOL_APP
 #include "../sokol/sokol_gfx.h"
+//#include "animobj.h"
 #include "objloader.h"
 #include "heightmap.h"
 #include "pipelines.h"
@@ -16,6 +17,7 @@ struct frameinfo {
 
     sg_pass_action pass_action;
     struct worldmap map;
+    //struct animobj archvile;
 
     bool lightsenable[32];
 };
