@@ -3,6 +3,7 @@
 #include "../sokol/sokol_gfx.h"
 #include "genshd_md5.h"
 #include "md5model.h"
+#include "frameinfo.h"
 
 static struct md5_model _model;
 static struct md5_anim  _anim;
@@ -11,7 +12,8 @@ static sg_image _boneimg;
 static float *_bonebuf;
 
 #define MAX_BONES 256
-#define MAX_INSTA 1
+#define MAX_INSTA 100
+#define INSTA_SIZE (sizeof(float)*4*4*MAX_BONES)
 
 int animobj_init()
 {
@@ -31,7 +33,7 @@ int animobj_init()
 
     sg_image_desc imgdesc = {
         .width = MAX_BONES * 4,
-        .height = 1,
+        .height = MAX_INSTA,
         .num_mipmaps = 1,
         .pixel_format = SG_PIXELFORMAT_RGBA32F,
         .usage = SG_USAGE_STREAM,
@@ -54,6 +56,8 @@ void animobj_uploadbones(const float *data, int size)
     sg_update_image(_boneimg, &imgdata);
 }
 
+extern struct frameinfo fi;
+
 void animobj_render(struct pipelines *pipes, hmm_mat4 vp)
 {
     sg_apply_pipeline(pipes->animobj);
@@ -64,15 +68,30 @@ void animobj_render(struct pipelines *pipes, hmm_mat4 vp)
             .index_buffer = _model.meshes[i].ibuf,
             .vs_images[SLOT_weightmap] = _model.weightmap,
             .vs_images[SLOT_bonemap] = _boneimg,
+            .fs_images[SLOT_imgdiff] = _model.meshes[i].imgd,
+            .fs_images[SLOT_imgspec] = _model.meshes[i].imgs,
+            .fs_images[SLOT_imgnorm] = _model.meshes[i].imgn,
         };
         sg_apply_bindings(&bind);
 
-        vs_md5_t uni = {
-            .mvp = HMM_MultiplyMat4(vp, HMM_Translate(HMM_Vec3(0.0f, 0.0f, 0.f))),
-            .boneuv = {0, 0, MAX_BONES*4, MAX_INSTA},
-            .weightuv = {0, 0, _model.weightw, _model.meshes[i].woffset},
+        vs_md5_t univs = {
+            .umodel = HMM_MultiplyMat4(
+                    HMM_Translate(HMM_Vec3(0.0f, 100.0f, 0.f)),
+                    HMM_Rotate(-90.0f, HMM_Vec3(0.5f, 0.0f, 0.0f))),
+            .uvp = vp,
+            .uboneuv = {0, 0, MAX_BONES*4, MAX_INSTA},
+            .uweightuv = {0, 0, _model.weightw, _model.meshes[i].woffset},
+            .ulightpos = fi.dlight_dir,
+            .uviewpos = fi.cam.pos,
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5, &SG_RANGE(uni));
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5, &SG_RANGE(univs));
+
+        fs_md5_t unifs = {
+            .uambi = fi.dlight_ambi,
+            .udiff = fi.dlight_diff,
+            .uspec = HMM_Vec3(0.5f, 0.5f, 0.5f),
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_md5, &SG_RANGE(unifs));
 
         sg_draw(0, _model.meshes[i].icount*3, 1);
     }
@@ -104,6 +123,7 @@ void animobj_pipeline(struct pipelines *pipes)
             .attrs = {
                 [ATTR_vs_md5_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
                 [ATTR_vs_md5_anorm] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_md5_atang] = {.format = SG_VERTEXFORMAT_FLOAT3},
                 [ATTR_vs_md5_auv] = {.format = SG_VERTEXFORMAT_FLOAT2},
                 [ATTR_vs_md5_aweight] = {.format = SG_VERTEXFORMAT_SHORT2},
             },
@@ -155,6 +175,12 @@ void animobj_play(double delta)
     float interptime = obj->lasttime * curanim->fps;
     //md5anim_interp(curanim, obj->interp, obj->curframe, obj->nextframe, interptime);
     struct md5_joint *jf = &curanim->frames[curanim->jcount * obj->curframe];
-    animobj_bone2tex(obj->model, jf, _bonebuf, curanim->jcount);
-    animobj_uploadbones(_bonebuf, sizeof(float) * 4 * 4 * MAX_BONES);
+
+    float *outbuf = &_bonebuf[0];
+    animobj_bone2tex(obj->model, jf, outbuf, curanim->jcount);
+}
+
+void animobj_update_bonetex()
+{
+    animobj_uploadbones(_bonebuf, INSTA_SIZE * MAX_INSTA);
 }

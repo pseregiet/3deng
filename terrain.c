@@ -142,9 +142,6 @@ void terrain_set_shadowmap(sg_image shadowmap)
         fi.terrainbind[i].fs_images[SLOT_shadowmap] = shadowmap;
 }
 
-extern hmm_vec3 dirlight_ambi;
-extern hmm_vec3 dirlight_diff;
-extern hmm_vec3 ldir;
 void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         hmm_vec3 lightpos, hmm_vec3 viewpos, hmm_mat4 lightmatrix)
 {
@@ -153,14 +150,14 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
     vs_params_t munis = {
         .vp = vp,
         .lightpos = lightpos,
-        .lightpos_s = ldir,
+        .lightpos_s = fi->dlight_dir,
         .viewpos = viewpos,
         .lightspace_matrix = lightmatrix,
     };
 
     fs_params_t fsparm = {
-        .uambi = dirlight_ambi,
-        .udiff = dirlight_diff,
+        .uambi = fi->dlight_ambi,
+        .udiff = fi->dlight_diff,
         .uspec = HMM_Vec3(0.5f, 0.5f, 0.5f),
         .shadowmap_size = HMM_Vec2(1024.0f, 1024.0f),
     };

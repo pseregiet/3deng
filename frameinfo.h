@@ -7,10 +7,12 @@
 #include "objloader.h"
 #include "heightmap.h"
 #include "pipelines.h"
+#include "camera.h"
 #include <stdbool.h>
 
 struct frameinfo {
     struct pipelines pipes;
+    struct camera cam;
     sg_bindings mainbind;
     sg_bindings lightbind;
     sg_bindings terrainbind[4];
@@ -20,6 +22,9 @@ struct frameinfo {
     //struct animobj archvile;
 
     bool lightsenable[32];
+    hmm_vec3 dlight_dir;
+    hmm_vec3 dlight_diff;
+    hmm_vec3 dlight_ambi;
 };
 
 #endif

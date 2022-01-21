@@ -3,6 +3,9 @@
 #include "hmm.h"
 #define hmm_quat hmm_quaternion
 
+hmm_vec3 get_tangent(hmm_vec3 *v0pos, hmm_vec3 *v1pos, hmm_vec3 *v2pos,
+        hmm_vec2 *v0uv, hmm_vec2 *v1uv, hmm_vec2 *v2uv);
+
 hmm_quat quat_calcw(hmm_quat q);
 hmm_quat quat_multvec(hmm_quat q, hmm_vec3 v);
 hmm_vec3 quat_rotat(hmm_quat q, hmm_vec3 in);

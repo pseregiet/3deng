@@ -57,7 +57,7 @@ int load_sg_image(const char *fn, sg_image *img)
     stbi_set_flip_vertically_on_load(true);
     unsigned char *data = stbi_load(fn, &w, &h, &n, 4);
     if (!data) {
-        fatalerror("stbi_load(%s) failed\n", fn);
+        printf("stbi_load(%s) failed\n", fn);
         return -1;
     }
 
@@ -76,6 +76,7 @@ int load_sg_image(const char *fn, sg_image *img)
     });
 
     stbi_image_free(data);
+    return 0;
 }
 
 struct imgarray {

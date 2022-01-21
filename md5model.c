@@ -118,6 +118,7 @@ static int temp_md5model_verify(const struct temp_md5_model *model)
 struct md5vertex {
     hmm_vec3 pos;
     hmm_vec3 norm;
+    hmm_vec3 tang;
     hmm_vec2 uv;
     //start and count
     int16_t weight[2];
@@ -131,6 +132,10 @@ static void md5model_normals(struct md5vertex *vbuf, struct temp_md5_trig *tbuf,
         hmm_vec3 v1 = vbuf[tbuf[i].index[1]].pos;
         hmm_vec3 v2 = vbuf[tbuf[i].index[2]].pos;
 
+        hmm_vec2 uv0 = vbuf[tbuf[i].index[0]].uv;
+        hmm_vec2 uv1 = vbuf[tbuf[i].index[1]].uv;
+        hmm_vec2 uv2 = vbuf[tbuf[i].index[2]].uv;
+
         hmm_vec3 v20 = HMM_SubtractVec3(v2, v0);
         hmm_vec3 v10 = HMM_SubtractVec3(v1, v0);
         hmm_vec3 normal = HMM_Cross(v20, v10);
@@ -142,6 +147,11 @@ static void md5model_normals(struct md5vertex *vbuf, struct temp_md5_trig *tbuf,
         vbuf[tbuf[i].index[0]].norm = n0;
         vbuf[tbuf[i].index[1]].norm = n1;
         vbuf[tbuf[i].index[2]].norm = n2;
+
+        hmm_vec3 t0 = HMM_NormalizeVec3(get_tangent(&v0, &v1, &v2, &uv0, &uv1, &uv2));
+        vbuf[tbuf[i].index[0]].tang = t0;
+        vbuf[tbuf[i].index[1]].tang = t0;
+        vbuf[tbuf[i].index[2]].tang = t0;
     }
 
     for (int i = 0; i < vcount; ++i)
@@ -187,6 +197,22 @@ static void calc_weightmap(const struct temp_md5_model *model, struct md5_model 
     free(buf);
 }
 
+extern sg_image imgdummy;
+static void make_shader(struct md5_mesh *mesh, char *shader)
+{
+    char fn[0x200];
+    mesh->imgd = imgdummy;
+    mesh->imgs = imgdummy;
+    mesh->imgn = imgdummy;
+
+    snprintf(fn, 0x200, "md5/%s_d.png", shader);
+    load_sg_image(fn, &mesh->imgd);
+    snprintf(fn, 0x200, "md5/%s_s.png", shader);
+    load_sg_image(fn, &mesh->imgs);
+    snprintf(fn, 0x200, "md5/%s_n.png", shader);
+    load_sg_image(fn, &mesh->imgn);
+}
+
 static void md5model_make(const struct temp_md5_model *model, struct md5_model *mdl)
 {
     const int vertsize = sizeof(struct md5vertex);
@@ -230,6 +256,8 @@ static void md5model_make(const struct temp_md5_model *model, struct md5_model *
         });
 
         free(vbuf);
+
+        make_shader(&mdl->meshes[i], mesh->shader);
     }
 
     calc_invmatrix(model, mdl);

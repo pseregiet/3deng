@@ -1,5 +1,6 @@
 //------------------------------------------------------------------------------
-//  1-9-3-look
+//  super fucking amazing openGL3.3 engine
+//  super quallity shit code by Patryk Seregiet (c) 2021-2022
 //------------------------------------------------------------------------------
 #define SOKOL_NO_SOKOL_APP
 #include "../sokol/sokol_gfx.h"
@@ -42,25 +43,22 @@ sg_image imgdummy = {0};
 struct sdlobjs sdl = {0};
 
 bool gquit = 0;
-struct matrix_unis {
-    hmm_mat4 model;
-    hmm_mat4 view;
-    hmm_mat4 projection;
+
+struct frameinfo fi = {
+    .cam = (struct camera) {
+        .yaw = -90.f,
+        .pitch = 0,
+        .pos = {0.0f, 0.0f, 3.0f},
+        .front = { 0.0f, 0.0f, -1.0f},
+        .up = {0.0f, 1.0f, 0.0f},
+        .dir = {0.0f, 0.0f, 0.0f},
+    },
+    .dlight_dir =  (hmm_vec3){0.5f, 1.0f, 0.3f},
+    .dlight_diff = (hmm_vec3){0.4f, 0.4f, 0.4f},
+    .dlight_ambi = (hmm_vec3){0.05f, 0.05f, 0.05f},
 };
 
-struct camera cam = {
-    .yaw = -90.f,
-    .pitch = 0,
-    .pos = {0.0f, 0.0f, 3.0f},
-    .front = { 0.0f, 0.0f, -1.0f},
-    .up = {0.0f, 1.0f, 0.0f},
-    .dir = {0.0f, 0.0f, 0.0f},
-};
 
-struct frameinfo fi = {0};
-
-hmm_vec3 dirlight_diff = {0.4f, 0.4f, 0.4f};
-hmm_vec3 dirlight_ambi = {0.05f, 0.05f, 0.05f};
 hmm_vec3 ldir = {0.5f, 1.0f, 0.3f};
 
 struct m2world m2 = {0};
@@ -166,11 +164,11 @@ static void do_imgui_frame(int w, int h, double delta)
 
     igBegin("Hello world! window", NULL, 0);
 
-    igText("Camera pos: %f, %f, %f", cam.pos.X, cam.pos.Y, cam.pos.Z);
-    igText("Camera dir: %f, %f, %f", cam.front.X, cam.front.Y, cam.front.Z);
-    igText("Light dir: %f, %f, %f", ldir.X, ldir.Y, ldir.Z);
-    igColorEdit3("directional light diffuse", dirlight_diff.Elements, ImGuiColorEditFlags_DefaultOptions_);
-    igColorEdit3("directional light ambient", dirlight_ambi.Elements, ImGuiColorEditFlags_DefaultOptions_);
+    igText("Camera pos: %f, %f, %f", fi.cam.pos.X, fi.cam.pos.Y, fi.cam.pos.Z);
+    igText("Camera dir: %f, %f, %f", fi.cam.front.X, fi.cam.front.Y, fi.cam.front.Z);
+    igText("Light dir: %f, %f, %f", fi.dlight_dir.X, fi.dlight_dir.Y, fi.dlight_dir.Z);
+    igColorEdit3("directional light diffuse", fi.dlight_diff.Elements, ImGuiColorEditFlags_DefaultOptions_);
+    igColorEdit3("directional light ambient", fi.dlight_ambi.Elements, ImGuiColorEditFlags_DefaultOptions_);
 
     igCheckbox("Light enable1", &fi.lightsenable[0]);
     igCheckbox("Light enable2", &fi.lightsenable[1]);
@@ -178,10 +176,10 @@ static void do_imgui_frame(int w, int h, double delta)
     igCheckbox("Light enable4", &fi.lightsenable[3]);
 
     if (igButton("Set lightdir", (ImVec2) {100.0f, 100.0f})) {
-        ldir = cam.front;
+        fi.dlight_dir = fi.cam.front;
     }
 
-    m2.cam = cam.pos;
+    m2.cam = fi.cam.pos;
     m2.map = &fi.map;
     hmm_vec3 mray = mouse2ray(&m2);
     static_obj_set_position(&m2.obj, mray);
@@ -206,6 +204,8 @@ static void do_update(double delta)
         rottt=0.f;
 
     animobj_play(delta);
+
+    animobj_update_bonetex();
 }
 
 static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_t *munis)
@@ -213,15 +213,15 @@ static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_
     sg_apply_pipeline(fi->pipes.simpleobj);
     //fs uniforms
     fs_params_t fs_params = {
-        .viewpos = cam.pos,
+        .viewpos = fi->cam.pos,
         .matshine = 32.0f,
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_params, &SG_RANGE(fs_params));
 
     fs_dir_light_t fs_dir_light = {
-        .direction = ldir,
-        .ambient = dirlight_ambi,
-        .diffuse = dirlight_diff,
+        .direction = fi->dlight_dir,
+        .ambient = fi->dlight_ambi,
+        .diffuse = fi->dlight_diff,
         .specular = HMM_Vec3(0.5f, 0.5f, 0.5f)
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_dir_light, &SG_RANGE(fs_dir_light));
@@ -252,10 +252,10 @@ static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_point_lights, &SG_RANGE(fs_point_lights));
 
     fs_spot_light_t fs_spot_light = {
-        .position = cam.pos,
-        .direction = cam.front,//HMM_AddVec3(cam.pos, cam.front),
-        .cutoff = HMM_COSF(HMM_ToRadians(12.5f)),//cosf(12.5f),
-        .outcutoff = HMM_COSF(HMM_ToRadians(15.0f)),//cosf(15.0f),
+        .position = fi->cam.pos,
+        .direction = fi->cam.front,
+        .cutoff = HMM_COSF(HMM_ToRadians(12.5f)),
+        .outcutoff = HMM_COSF(HMM_ToRadians(15.0f)),
         .attenuation = HMM_Vec3(1.0f, 0.09f, 0.032f),
         .ambient = HMM_Vec3(0.0f, 0.0f, 0.0f),
         .diffuse = HMM_Vec3(1.0f, 1.0f, 1.0f),
@@ -320,10 +320,10 @@ static void do_render(struct frameinfo *fi, double delta)
     shadowmap_draw();
 
     sg_begin_default_pass(&fi->pass_action, w, h);
-    hmm_mat4 view = HMM_LookAt(cam.pos, HMM_AddVec3(cam.pos, cam.front), cam.up);
+    hmm_mat4 view = HMM_LookAt(fi->cam.pos, HMM_AddVec3(fi->cam.pos, fi->cam.front), fi->cam.up);
     hmm_mat4 vp = HMM_MultiplyMat4(projection, view);
     vs_params_t munis = { .vp = vp };
-    draw_terrain(fi, vp, ldir, cam.pos, shadow.lightspace);
+    draw_terrain(fi, vp, fi->dlight_dir, fi->cam.pos, shadow.lightspace);
  
     do_render_static_objs(fi, delta, &munis);
     do_render_lightcubes(fi, delta, &munis);
@@ -435,7 +435,7 @@ int main(int argc, char **argv)
     };
 
     fi.pass_action = (sg_pass_action){
-        .colors[0] = {.action = SG_ACTION_CLEAR, .value = {0.0, 0.0, 0.0, 1.0 }},
+        .colors[0] = {.action = SG_ACTION_CLEAR, .value = {0.5, 0.5, 0.5, 1.0 }},
     };
 
     terrain_set_shadowmap(shadow.depthmap);

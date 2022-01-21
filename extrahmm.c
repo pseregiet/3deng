@@ -2,6 +2,22 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+hmm_vec3 get_tangent(hmm_vec3 *v0pos, hmm_vec3 *v1pos, hmm_vec3 *v2pos,
+        hmm_vec2 *v0uv, hmm_vec2 *v1uv, hmm_vec2 *v2uv) {
+
+    hmm_vec3 edge0 = HMM_SubtractVec3(*v1pos, *v0pos);
+    hmm_vec3 edge1 = HMM_SubtractVec3(*v2pos, *v0pos);
+    hmm_vec2 delta_uv0 = HMM_SubtractVec2(*v1uv, *v0uv);
+    hmm_vec2 delta_uv1 = HMM_SubtractVec2(*v2uv, *v0uv);
+
+    float f = 1.f / (delta_uv0.X * delta_uv1.Y - delta_uv1.X * delta_uv0.Y);
+    float x = f * (delta_uv1.Y * edge0.X - delta_uv0.Y * edge1.X);
+    float y = f * (delta_uv1.Y * edge0.Y - delta_uv0.Y * edge1.Y);
+    float z = f * (delta_uv1.Y * edge0.Z - delta_uv0.Y * edge1.Z);
+
+    return HMM_Vec3(x, y, z);
+}
+
 static bool gluInvertMatrix(float m[16], float invOut[16]);
 
 hmm_quat quat_calcw(hmm_quat q)

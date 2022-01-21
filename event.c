@@ -4,6 +4,7 @@
 
 #include "hmm.h"
 #include "event.h"
+#include "frameinfo.h"
 #include "sdl2_stuff.h"
 #include "sdl2_imgui.h"
 
@@ -16,7 +17,7 @@ enum keys {
 };
 
 extern struct sdlobjs sdl;
-extern struct camera cam;
+extern struct frameinfo fi;
 extern bool gquit;
 char keymap[KEY_COUNT] = {0};
 
@@ -25,26 +26,26 @@ void move_camera(double delta)
     float camspeed = 0.5f * delta;
     hmm_vec3 off;
     if (keymap[KEYW]) {
-        off = HMM_MultiplyVec3f(cam.front, camspeed);
-        cam.pos = HMM_AddVec3(cam.pos, off);
+        off = HMM_MultiplyVec3f(fi.cam.front, camspeed);
+        fi.cam.pos = HMM_AddVec3(fi.cam.pos, off);
     }
     else if (keymap[KEYS]) {
-        off = HMM_MultiplyVec3f(cam.front, camspeed);
-        cam.pos = HMM_SubtractVec3(cam.pos, off);
+        off = HMM_MultiplyVec3f(fi.cam.front, camspeed);
+        fi.cam.pos = HMM_SubtractVec3(fi.cam.pos, off);
     }
 
     if (keymap[KEYA]) {
-        off = HMM_MultiplyVec3f(HMM_NormalizeVec3(HMM_Cross(cam.front, cam.up)), camspeed);
-        cam.pos = HMM_SubtractVec3(cam.pos, off);
+        off = HMM_MultiplyVec3f(HMM_NormalizeVec3(HMM_Cross(fi.cam.front, fi.cam.up)), camspeed);
+        fi.cam.pos = HMM_SubtractVec3(fi.cam.pos, off);
     }
     else if (keymap[KEYD]) {
-        off = HMM_MultiplyVec3f(HMM_NormalizeVec3(HMM_Cross(cam.front, cam.up)), camspeed);
-        cam.pos = HMM_AddVec3(cam.pos, off);
+        off = HMM_MultiplyVec3f(HMM_NormalizeVec3(HMM_Cross(fi.cam.front, fi.cam.up)), camspeed);
+        fi.cam.pos = HMM_AddVec3(fi.cam.pos, off);
     }
     /*
         case SDLK_z:
-            printf("%f, %f, %f\n", cam.pos.X, cam.pos.Y, cam.pos.Z);
-            cam.pos.Y += camspeed;
+            printf("%f, %f, %f\n", fi.cam.pos.X, fi.cam.pos.Y, fi.cam.pos.Z);
+            fi.cam.pos.Y += camspeed;
             break;
         case SDLK_x:
     }
@@ -58,21 +59,21 @@ static void rot_camera(int mx, int my)
     float xoff = (float)mx * sens;
     float yoff = (float)my * sens;
 
-    cam.yaw += xoff;
-    cam.pitch += yoff;
+    fi.cam.yaw += xoff;
+    fi.cam.pitch += yoff;
 
-    if (cam.pitch > 89.0f)
-        cam.pitch = 89.0f;
-    else if (cam.pitch < -89.0f)
-        cam.pitch = -89.0f;
+    if (fi.cam.pitch > 89.0f)
+        fi.cam.pitch = 89.0f;
+    else if (fi.cam.pitch < -89.0f)
+        fi.cam.pitch = -89.0f;
 
-    float ryaw = HMM_ToRadians(cam.yaw);
-    float rpitch = HMM_ToRadians(cam.pitch);
+    float ryaw = HMM_ToRadians(fi.cam.yaw);
+    float rpitch = HMM_ToRadians(fi.cam.pitch);
 
     hmm_vec3 dir = HMM_Vec3(cosf(ryaw) * cosf(rpitch),
                             sinf(rpitch),
                             sinf(ryaw) * cosf(rpitch));
-    cam.front = HMM_NormalizeVec3(dir);
+    fi.cam.front = HMM_NormalizeVec3(dir);
 }
 
 void do_input(double delta)
