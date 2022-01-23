@@ -136,8 +136,11 @@ int vmodel_init()
     while (1) {
         line[0] = 0;
         fgets(line, 0x1000, f);
-        if (!line[0] || line[0] == '#')
+        if (!line[0])
             break;
+
+        if (line[0] == '#')
+            continue;
 
         char *fp = line;
         char *name = 0;

@@ -27,7 +27,7 @@ struct temp_md5_mesh {
 };
 
 struct temp_md5_model {
-    struct md5_joint *baseSkel;
+    struct md5_basejoint *base_skel;
     struct temp_md5_mesh *meshes;
 
     int jcount;
@@ -162,10 +162,11 @@ static void calc_invmatrix(const struct temp_md5_model *model, struct md5_model 
 {
     mdl->invmatrices = (hmm_mat4 *)calloc(model->jcount, sizeof(hmm_mat4));
     for (int i = 0; i < model->jcount; ++i) {
-        hmm_mat4 m = HMM_QuaternionToMat4(model->baseSkel[i].orient);
-        m.Elements[3][0] = model->baseSkel[i].pos.X;
-        m.Elements[3][1] = model->baseSkel[i].pos.Y;
-        m.Elements[3][2] = model->baseSkel[i].pos.Z;
+        struct md5_joint *j = &model->base_skel[i].joint;
+        hmm_mat4 m = HMM_QuaternionToMat4(j->orient);
+        m.Elements[3][0] = j->pos.X;
+        m.Elements[3][1] = j->pos.Y;
+        m.Elements[3][2] = j->pos.Z;
         mdl->invmatrices[i] = extrahmm_inverse_mat4(m);
     }
 }
@@ -231,7 +232,7 @@ static void md5model_make(const struct temp_md5_model *model, struct md5_model *
             for (int w = 0; w < mesh->vbuf[vi].wcount; ++w) {
                 int wstart = mesh->vbuf[vi].wstart;
                 struct md5_weight *weight = &mesh->wbuf[wstart + w];
-                struct md5_joint *joint = &model->baseSkel[weight->joint];
+                struct md5_joint *joint = &model->base_skel[weight->joint].joint;
 
                 hmm_vec3 rot = quat_rotat(joint->orient, weight->pos);
                 hmm_vec3 new = HMM_MultiplyVec3f(
@@ -268,8 +269,8 @@ static void md5model_make(const struct temp_md5_model *model, struct md5_model *
 
 static void temp_md5model_kill(const struct temp_md5_model *model)
 {
-    if (model->baseSkel)
-        free(model->baseSkel);
+    if (model->base_skel)
+        free(model->base_skel);
 
     if (model->meshes) {
         for (int i = 0; i < model->mcount; ++i) {
@@ -296,7 +297,7 @@ int md5model_open(const char *fn, struct md5_model *mdl)
 
     f = fopen(fn, "rb");
     if (!f) {
-        printf("md5model_open: Can't open file %s\n", f);
+        printf("md5model_open: Can't open file %s\n", fn);
         return ret;
     }
 
@@ -310,8 +311,8 @@ int md5model_open(const char *fn, struct md5_model *mdl)
         }
         else if (sscanf(line, " numJoints %d", &model.jcount) == 1) {
             if (model.jcount > 0) {
-                model.baseSkel = (struct md5_joint *)
-                    calloc(model.jcount, sizeof(*model.baseSkel));
+                model.base_skel = (struct md5_basejoint *)
+                    calloc(model.jcount, sizeof(*model.base_skel));
             }
         }
         else if (sscanf(line, " numMeshes %d", &model.mcount) == 1) {
@@ -322,11 +323,12 @@ int md5model_open(const char *fn, struct md5_model *mdl)
         }
         else if (strncmp(line, "joints {", 8) == 0) {
             for (int i = 0; i < model.jcount; ++i) {
-                struct md5_joint *joint = &model.baseSkel[i];
+                struct md5_basejoint *bjoint = &model.base_skel[i];
+                struct md5_joint *joint = &bjoint->joint;
                 fgets(line, sizeof(line), f);
 
-                if (sscanf(line, "%s %d ( %f %f %f ) ( %f %f %f )",
-                            joint->name, &joint->parent, &joint->pos.X,
+                if (sscanf(line, "%64s %d ( %f %f %f ) ( %f %f %f )",
+                            bjoint->name, &joint->parent, &joint->pos.X,
                             &joint->pos.Y, &joint->pos.Z, &joint->orient.X,
                             &joint->orient.Y, &joint->orient.Z) == 8) {
 

@@ -31,25 +31,25 @@ out INTERFACE {
     vec2 uv;
 } inter;
 
-void get_mat4_from_texture(in sampler2D map, in ivec4 pos, in int index, out mat4 mat) {
-    pos.x = 0;
-    pos.y = 0;
-    vec4 m1 = texelFetch(map, ivec2(pos.x + index + 0, pos.y), 0);
-    vec4 m2 = texelFetch(map, ivec2(pos.x + index + 1, pos.y), 0);
-    vec4 m3 = texelFetch(map, ivec2(pos.x + index + 2, pos.y), 0);
-    vec4 m4 = texelFetch(map, ivec2(pos.x + index + 3, pos.y), 0);
-    //vec4 m4 = vec4(0.0, 0.0, 0.0, 1.0);
-
+void get_mat4_from_texture(in sampler2D map, in int index, out mat4 mat) {
+    ivec2 pos = ivec2(uboneuv.x + index, uboneuv.y);
+    if (pos.x >= uboneuv.z) {
+        pos.y++;
+        pos.x = pos.x % uboneuv.z;
+    }
+    vec4 m1 = texelFetch(map, pos, 0); pos.x++;
+    vec4 m2 = texelFetch(map, pos, 0); pos.x++;
+    vec4 m3 = texelFetch(map, pos, 0); pos.x++;
+    vec4 m4 = texelFetch(map, pos, 0);
     mat = mat4(m1, m2, m3, m4);
 }
 
 void get_weight_from_texture(in sampler2D map, in int index, out float bias, out float joint) {
-    ivec2 pos = ivec2(uweightuv.x + index + uweightuv.w, uweightuv.y);
+    ivec2 pos = ivec2(uweightuv.x + index, uweightuv.y);
     if (uweightuv.x >= uweightuv.z) {
         pos.y++;
-        pos.x % uweightuv.z;
+        pos.x = pos.x % uweightuv.z;
     }
-
     vec4 pixel = texelFetch(map, pos, 0);
     bias = pixel.x;
     joint = pixel.y;
@@ -65,7 +65,7 @@ void main() {
         float joint;
         mat4 bonemat;
         get_weight_from_texture(weightmap, wstart+i, bias, joint);
-        get_mat4_from_texture(bonemap, uboneuv, int(joint)*4, bonemat);
+        get_mat4_from_texture(bonemap, int(joint)*4, bonemat);
 
         bonetransform += (bonemat * bias);
     }
@@ -133,7 +133,6 @@ void main() {
 
     vec3 light = ambient + (diffuse + specular) * pixdiff;
     frag = vec4(light, 1.0);
-    //frag = vec4(pixspec, 1.0);
 }
 @end
 

@@ -1,31 +1,37 @@
 #include "animobj.h"
 #define SOKOL_NO_SOKOL_APP
 #include "../sokol/sokol_gfx.h"
+#include "cJSON/cJSON.h"
+#include "fileops.h"
 #include "genshd_md5.h"
-#include "md5model.h"
+#include "md5loader.h"
 #include "frameinfo.h"
 
-static struct md5_model _model;
-static struct md5_anim  _anim;
+/*
+KHASH_MAP_INIT_STR(animobjmap, struct animobj *)
+
+static struct animobjs {
+    struct growing_alloc names;
+    struct growing_alloc objs;
+    khash_t(animobjmap) map;
+};
+*/
+
 static struct animobj _obj;
 static sg_image _boneimg;
 static float *_bonebuf;
 
 #define MAX_BONES 256
-#define MAX_INSTA 100
+#define MAX_INSTA 10
 #define INSTA_SIZE (sizeof(float)*4*4*MAX_BONES)
+
 
 int animobj_init()
 {
     struct animobj *obj = &_obj;
-    md5model_open("md5/archvile.md5mesh", &_model);
-    md5anim_open("md5/attack1.md5anim", &_anim);
-    _model.anims = (struct md5_anim **)calloc(1, sizeof(struct md5_anim *));
-    _model.anims[0] = &_anim;
-    _model.acount = 1;
 
-    obj->model = &_model;
-    obj->interp = (struct md5_joint *)calloc(_model.jcount, sizeof(*obj->interp));
+    obj->model = md5loader_find("archvile/archvile");
+    obj->interp = (struct md5_joint *)calloc(obj->model->jcount, sizeof(*obj->interp));
     obj->curanim = 0;
     obj->curframe = 0;
     obj->nextframe = 1;
@@ -44,7 +50,7 @@ int animobj_init()
     };
     _boneimg = sg_make_image(&imgdesc);
     
-    _bonebuf = (float *)calloc(sizeof(float) * 4 * 4, MAX_BONES);
+    _bonebuf = (float *)calloc(sizeof(hmm_mat4), MAX_BONES);
     return 0;
 }
 
@@ -62,15 +68,16 @@ void animobj_render(struct pipelines *pipes, hmm_mat4 vp)
 {
     sg_apply_pipeline(pipes->animobj);
 
-    for (int i = 0; i < _model.mcount; ++i) {
+    struct md5_model *model = _obj.model;
+    for (int i = 0; i < _obj.model->mcount; ++i) {
         sg_bindings bind = {
-            .vertex_buffers[0] = _model.meshes[i].vbuf,
-            .index_buffer = _model.meshes[i].ibuf,
-            .vs_images[SLOT_weightmap] = _model.weightmap,
+            .vertex_buffers[0] = model->meshes[i].vbuf,
+            .index_buffer = model->meshes[i].ibuf,
+            .vs_images[SLOT_weightmap] = model->weightmap,
             .vs_images[SLOT_bonemap] = _boneimg,
-            .fs_images[SLOT_imgdiff] = _model.meshes[i].imgd,
-            .fs_images[SLOT_imgspec] = _model.meshes[i].imgs,
-            .fs_images[SLOT_imgnorm] = _model.meshes[i].imgn,
+            .fs_images[SLOT_imgdiff] = model->meshes[i].imgd,
+            .fs_images[SLOT_imgspec] = model->meshes[i].imgs,
+            .fs_images[SLOT_imgnorm] = model->meshes[i].imgn,
         };
         sg_apply_bindings(&bind);
 
@@ -80,7 +87,7 @@ void animobj_render(struct pipelines *pipes, hmm_mat4 vp)
                     HMM_Rotate(-90.0f, HMM_Vec3(0.5f, 0.0f, 0.0f))),
             .uvp = vp,
             .uboneuv = {0, 0, MAX_BONES*4, MAX_INSTA},
-            .uweightuv = {0, 0, _model.weightw, _model.meshes[i].woffset},
+            .uweightuv = {model->meshes[i].woffset, 0, model->weightw, 1},
             .ulightpos = fi.dlight_dir,
             .uviewpos = fi.cam.pos,
         };
@@ -93,7 +100,7 @@ void animobj_render(struct pipelines *pipes, hmm_mat4 vp)
         };
         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_md5, &SG_RANGE(unifs));
 
-        sg_draw(0, _model.meshes[i].icount*3, 1);
+        sg_draw(0, model->meshes[i].icount*3, 1);
     }
 }
 

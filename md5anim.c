@@ -45,7 +45,7 @@ static void buildframe(const struct jointinfo *jinfo, const struct baseframe *ba
         struct md5_joint *thisj = &frame[i];
         int parent = jinfo[i].parent;
         thisj->parent = parent;
-        strcpy(thisj->name, jinfo[i].name);
+        //strcpy(thisj->name, jinfo[i].name);
 
         if (thisj->parent < 0) {
             thisj->pos = apos;
@@ -133,7 +133,7 @@ int md5anim_open(const char *fn, struct md5_anim *anim)
             for (int i = 0; i < anim->jcount; ++i) {
                 fgets(line, sizeof(line), f);
                 struct jointinfo *j = &jinfo[i];
-                sscanf(line, " %s %d %d %d", 
+                sscanf(line, " %64s %d %d %d", 
                         j->name, &j->parent, &j->flags, &j->startidx);
             }
         }

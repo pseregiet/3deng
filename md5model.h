@@ -7,11 +7,15 @@
 #define MD5_MAX_MESHES 4
 
 struct md5_joint {
-    char name[64];
     hmm_vec3 pos;
     float bias;
     hmm_quat orient;
     int parent;
+};
+
+struct md5_basejoint {
+    char name[64];
+    struct md5_joint joint;
 };
 
 struct md5_weight {

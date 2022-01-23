@@ -6,6 +6,7 @@
 struct animobj {
     struct md5_model *model;
     struct md5_joint *interp;
+    int animcount;
     int curanim;
     int curframe;
     int nextframe;

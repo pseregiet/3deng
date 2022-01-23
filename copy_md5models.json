@@ -1,0 +1,27 @@
+{
+"md5models":[
+    {
+        "model": "archvile/archvile",
+        "anims": [
+            "archvile/walk1",
+            "archvile/walk2",
+            "archvile/attack1",
+            "archvile/attack2",
+            "archvile/die1",
+            "archvile/die2"
+        ]
+    },
+    {
+        "model": "cyberdemon",
+        "anims": [
+            "cyberdemon/walk1",
+            "cyberdemon/walk2",
+            "cyberdemon/attack1",
+            "cyberdemon/attack2",
+            "cyberdemon/die1",
+            "cyberdemon/die2",
+            "cyberdemon/special1"
+        ]
+    }
+]
+}

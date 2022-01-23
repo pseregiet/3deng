@@ -24,6 +24,7 @@
 #include "mouse2world.h"
 #include "shadow.h"
 #include "hitbox.h"
+#include "md5loader.h"
 #include "animobj.h"
 #include "genshd_combo.h"
 #include "sdl2_imgui.h"
@@ -377,6 +378,7 @@ int main(int argc, char **argv)
     assert(!pipelines_init(&fi.pipes));
     assert(!init_terrain());
     assert(!shadowmap_init());
+    assert(!md5loader_init());
     assert(!animobj_init());
 
     float vertices[36*3] =

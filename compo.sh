@@ -18,6 +18,8 @@ LIBS="\
 "
 
 FILE="\
+    cJSON/cJSON.c \
+    fileops.c \
     event.c \
     fast_obj.c \
     look.c \
@@ -40,6 +42,7 @@ FILE="\
     extrahmm.c \
     md5model.c \
     md5anim.c \
+    md5loader.c \
     animobj.c \
 "
 
