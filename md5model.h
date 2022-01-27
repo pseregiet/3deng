@@ -62,10 +62,12 @@ struct md5_model {
 };
 
 int md5model_open(const char *fn, struct md5_model *mdl);
+void md5model_kill(struct md5_model *model);
 int md5anim_open(const char *fn, struct md5_anim *anim);
 void md5anim_kill(struct md5_anim *anim);
 void md5anim_interp(const struct md5_anim *anim, struct md5_joint *out,
                     int fa, int fb, float interp);
+void md5anim_plain(const struct md5_anim *anim, struct md5_joint *out, int fa);
 
 #endif
 

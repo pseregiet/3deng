@@ -1,6 +1,6 @@
 #include "shadow.h"
 #include "objloader.h"
-#include "static_object.h"
+#include "staticmapobj.h"
 #include "frameinfo.h"
 #include "event.h"
 #include "genshd_terrain.h"
@@ -110,14 +110,17 @@ void shadowmap_draw()
     }
 
     sg_apply_pipeline(shadow.pip);
-
-    for (int i = 0; i < static_objs.count; ++i) {
-        shadow.mbind.vertex_buffers[0] = static_objs.data[i].model->buffer;
+    
+    const int end = staticmapobj_mngr_end();
+    for (int i = 0; i < end; ++i) {
+        struct staticmapobj *obj = staticmapobj_get(i);
+        const struct obj_model *mdl = obj->om;
+        shadow.mbind.vertex_buffers[0] = mdl->vbuf;
         sg_apply_bindings(&shadow.mbind);
         
-        unis.model = HMM_MultiplyMat4(shadow.lightspace, static_objs.data[i].matrix);
+        unis.model = HMM_MultiplyMat4(shadow.lightspace, obj->matrix);
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(unis));
-        sg_draw(0, static_objs.data[i].model->vcount, 1);
+        sg_draw(0, mdl->vcount, 1);
     }
 
     sg_end_pass();

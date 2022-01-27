@@ -1,7 +1,7 @@
-#include "hmm.h"
-#include "static_object.h"
 #define SOKOL_NO_SOKOL_APP
 #include "../sokol/sokol_gfx.h"
+#include "hmm.h"
+#include "objmodel.h"
 #include "genshd_hitboxcube.h"
 #include "hitbox.h"
 
@@ -36,6 +36,7 @@ void simpleobj_hitbox_pipeline(struct pipelines *pipes)
 
 void simpleobj_hitbox_render(struct frameinfo *fi, hmm_mat4 vp)
 {
+    /*
     vs_params_t uniform;
     sg_bindings bind = {0};
 
@@ -49,4 +50,5 @@ void simpleobj_hitbox_render(struct frameinfo *fi, hmm_mat4 vp)
         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_params, &SG_RANGE(uniform));
         sg_draw(0, 36, 1);
     }
+    */
 }

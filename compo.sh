@@ -19,31 +19,35 @@ LIBS="\
 
 FILE="\
     cJSON/cJSON.c \
-    fileops.c \
+    animatmapobj.c \
+    animodel.c \
+    animodel_mngr.c \
+    camera.c \
     event.c \
-    fast_obj.c \
-    look.c \
-    pipelines.c \
-    lightcube.c \
-    hitbox.c \
-    mouse2world.c \
-    objloader.c \
-    static_object.c \
-    growing_allocator.c \
-    sdl2_imgui.c \
-    shaderloader.c \
-    sokol_gfx.c \
-    sokol_imgui.c \
-    stb_image.c \
-    shadow.c \
-    heightmap.c \
-    terrain.c \
-    texloader.c \
     extrahmm.c \
-    md5model.c \
+    fast_obj.c \
+    fileops.c \
+    growing_allocator.c \
+    heightmap.c \
+    hitbox.c \
+    lightcube.c \
+    look.c \
     md5anim.c \
     md5loader.c \
-    animobj.c \
+    md5model.c \
+    mouse2world.c \
+    objloader.c \
+    objmodel.c \
+    pipelines.c \
+    sdl2_imgui.c \
+    shadow.c \
+    simple_list.c \
+    sokol_gfx.c \
+    sokol_imgui.c \
+    staticmapobj.c \
+    stb_image.c \
+    terrain.c \
+    texloader.c \
 "
 
 echo "Compile shd_combo.glsl"

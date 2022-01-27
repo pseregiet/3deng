@@ -197,3 +197,9 @@ void md5anim_interp(const struct md5_anim *anim, struct md5_joint *out,
         out[i].orient = HMM_Slerp(framea[i].orient, interp, frameb[i].orient);
     }
 }
+
+void md5anim_plain(const struct md5_anim *anim, struct md5_joint *out, int fa)
+{
+    const struct md5_joint *framea = &anim->frames[fa * anim->jcount];
+    memcpy(out, framea, sizeof(struct md5_joint) * anim->jcount);
+}

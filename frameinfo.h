@@ -3,8 +3,6 @@
 
 #define SOKOL_NO_SOKOL_APP
 #include "../sokol/sokol_gfx.h"
-//#include "animobj.h"
-#include "objloader.h"
 #include "heightmap.h"
 #include "pipelines.h"
 #include "camera.h"
@@ -13,7 +11,6 @@
 struct frameinfo {
     struct pipelines pipes;
     struct camera cam;
-    sg_bindings mainbind;
     sg_bindings lightbind;
     sg_bindings terrainbind[4];
 
@@ -23,8 +20,11 @@ struct frameinfo {
 
     bool lightsenable[32];
     hmm_vec3 dlight_dir;
+
     hmm_vec3 dlight_diff;
     hmm_vec3 dlight_ambi;
+    hmm_vec3 dlight_spec;
+    hmm_mat4 vp;
 };
 
 #endif

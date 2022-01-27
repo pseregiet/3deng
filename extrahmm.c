@@ -2,6 +2,16 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+hmm_mat4 calc_matrix(hmm_vec3 pos, hmm_vec4 rotation, hmm_vec3 scale)
+{
+    hmm_mat4 t = HMM_Translate(pos);
+    hmm_mat4 r = HMM_Rotate(rotation.W, rotation.XYZ);
+    hmm_mat4 s = HMM_Scale(scale);
+
+    hmm_mat4 tmp = HMM_MultiplyMat4(t, r);
+    return HMM_MultiplyMat4(tmp, s);
+}
+
 hmm_vec3 get_tangent(hmm_vec3 *v0pos, hmm_vec3 *v1pos, hmm_vec3 *v2pos,
         hmm_vec2 *v0uv, hmm_vec2 *v1uv, hmm_vec2 *v2uv) {
 

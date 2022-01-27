@@ -113,9 +113,9 @@ static int load_model_anims(const char* model, const char **animfps, int ac)
 }
 
 static int md5models_json() {
-    int ret = -1;
     const char *fn = "md5models.json";
     struct file jf;
+    int ret = -1;
     if (openfile(&jf, fn))
         return -1;
 
@@ -188,11 +188,26 @@ int md5loader_init()
 
 void md5loader_kill()
 {
+    khint_t i;
+    for (i = kh_begin(&models.map); i != kh_end(&models.map); ++i) {
+        if (!kh_exist(&models.map, i))
+            continue;
+
+        md5model_kill(kh_val(&models.map, i));
+    }
+
+    for (i = kh_begin(&animations.map); i != kh_end(&animations.map); ++i) {
+        if (!kh_exist(&animations.map, i))
+            continue;
+
+        md5anim_kill(kh_val(&animations.map, i));
+    }
+    kh_destroy(modelmap, &models.map);
+    kh_destroy(animmap, &animations.map);
+
     growing_alloc_kill(&models.names);
     growing_alloc_kill(&models.models);
     growing_alloc_kill(&animations.names);
     growing_alloc_kill(&animations.anims);
-    kh_destroy(modelmap, &models.map);
-    kh_destroy(animmap, &animations.map);
 }
 

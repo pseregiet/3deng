@@ -351,3 +351,29 @@ closefile:
     fclose(f);
     return ret;
 }
+
+static void md5mesh_kill(struct md5_mesh *mesh)
+{
+    if (mesh->vbuf.id)
+        sg_destroy_buffer(mesh->vbuf);
+    if (mesh->ibuf.id)
+        sg_destroy_buffer(mesh->vbuf);
+    if (mesh->imgd.id)
+        sg_destroy_image(mesh->imgd);
+    if (mesh->imgs.id)
+        sg_destroy_image(mesh->imgs);
+    if (mesh->imgn.id)
+        sg_destroy_image(mesh->imgn);
+}
+
+void md5model_kill(struct md5_model *model)
+{
+    for (int i = 0; i < model->mcount; ++i)
+        md5mesh_kill(&model->meshes[i]);
+
+    if (model->invmatrices)
+        free(model->invmatrices);
+
+    if (model->weightmap.id)
+        sg_destroy_image(model->weightmap);
+}

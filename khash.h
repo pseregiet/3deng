@@ -217,7 +217,6 @@ static const double __ac_HASH_UPPER = 0.77;
 		if (h) {														\
 			kfree((void *)h->keys); kfree(h->flags);					\
 			kfree((void *)h->vals);										\
-			kfree(h);													\
 		}																\
 	}																	\
 	SCOPE void kh_clear_##name(kh_##name##_t *h)						\

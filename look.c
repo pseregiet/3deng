@@ -18,14 +18,16 @@
 #include "sdl2_stuff.h"
 #include "frameinfo.h"
 #include "event.h"
+#include "md5loader.h"
 #include "objloader.h"
-#include "static_object.h"
 #include "terrain.h"
 #include "mouse2world.h"
 #include "shadow.h"
 #include "hitbox.h"
-#include "md5loader.h"
-#include "animobj.h"
+#include "animodel_mngr.h"
+#include "objloader.h"
+#include "animatmapobj.h"
+#include "staticmapobj.h"
 #include "genshd_combo.h"
 #include "sdl2_imgui.h"
 
@@ -127,20 +129,23 @@ static void imgui_static_objs()
     igBegin("Static objects", NULL, 0);
     static int new_selected = 0;
     if (igBeginListBox("Select model", (ImVec2){0.0f,0.0f})) {
-        for (int i = 1; i < 3; ++i) {
-            const bool isselected = (new_selected == i);
-            const char *name = 0;
-            const struct model *model = 0;
-            vmodel_get_key_value(i, &model, &name);
+        const int beg = objloader_beg();
+        const int end = objloader_end();
+        for (int i = beg; i < end; ++i) {
+            const char *name;
+            const struct obj_model *model;
+            if (objloader_get(i, &name, &model))
+                continue;
 
+            const bool isselected = (new_selected == i);
             if (igSelectable_Bool(name, isselected, ImGuiSelectableFlags_None, (ImVec2){0.0f,0.0f})) {
                 new_selected = i;
-                m2.obj.model = (struct model *)model;
+                m2.obj.om = model;
             }
         }
         igEndListBox();
     }
-
+/*
     static int placed_selected = 0;
     if (igBeginListBox("Placed objects", (ImVec2){0.0f,0.0f})) {
         for (int i = 0; i < static_objs.count; ++i) {
@@ -154,7 +159,7 @@ static void imgui_static_objs()
         }
         igEndListBox();
     }
-    
+*/  
     igEnd();
 }
 
@@ -183,7 +188,7 @@ static void do_imgui_frame(int w, int h, double delta)
     m2.cam = fi.cam.pos;
     m2.map = &fi.map;
     hmm_vec3 mray = mouse2ray(&m2);
-    static_obj_set_position(&m2.obj, mray);
+    staticmapobj_setpos(&m2.obj, mray);
     igText("Picked position: %f, %f, %f", mray.X, mray.Y, mray.Z);
 
     igText("App average %.3f ms/frame (%.1f FPS)", delta, 1000.0f / delta);
@@ -192,10 +197,31 @@ static void do_imgui_frame(int w, int h, double delta)
     imgui_static_objs();
 }
 
+static void do_update_animated(double delta)
+{
+    int end = animatmapobj_mngr_end();
+    struct animodel *mdls[end];
+
+    //here we would do sorting, culling etc.
+    for (int i = 0; i < end; ++i) {
+        struct animatmapobj *obj = animatmapobj_mngr_get(i);
+        mdls[i] = &obj->am;
+    }
+    animodel_mngr_calc_boneuv(mdls, end);
+
+    for (int i = 0; i < end; ++i) {
+        animodel_play(mdls[i], delta);
+        animodel_plain(mdls[i]);
+        animodel_joint2matrix(mdls[i]);
+    }
+}
+
 static void do_update(double delta)
 {
     static float rottt = 0.0f;
+    do_update_animated(delta / 1000.f);
     //rotate static objects...very fucking static, lol
+    /*
     for (int i = 0; i < static_objs.count; ++i) {
         static_objs.data[i].matrix = HMM_MultiplyMat4(static_objs.data[i].matrix,
                 (HMM_Rotate(HMM_ToRadians(rottt), HMM_Vec3(1.0f, 1.0f, 1.0f))));
@@ -203,15 +229,12 @@ static void do_update(double delta)
     }
     if (rottt >= 360.f)
         rottt=0.f;
-
-    animobj_play(delta);
-
-    animobj_update_bonetex();
+    */
 }
 
 static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_t *munis)
 {
-    sg_apply_pipeline(fi->pipes.simpleobj);
+    sg_apply_pipeline(fi->pipes.objmodel);
     //fs uniforms
     fs_params_t fs_params = {
         .viewpos = fi->cam.pos,
@@ -264,23 +287,37 @@ static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_spot_light, &SG_RANGE(fs_spot_light));
 
-    for (int i = 0; i < static_objs.count; ++i) {
-        obj_bind(static_objs.data[i].model, &fi->mainbind);
-        sg_apply_bindings(&fi->mainbind);
+    const int end = staticmapobj_mngr_end();
+    for (int i = 0; i < end; ++i) {
+        struct staticmapobj *obj = staticmapobj_get(i);
+        const struct obj_model *mdl = obj->om;
+        sg_bindings bind = {
+            .vertex_buffers[0] = mdl->vbuf,
+            .fs_images[SLOT_imgdiff] = mdl->imgdiff,
+            .fs_images[SLOT_imgspec] = mdl->imgspec,
+            //.fs_images[SLOT_imgnorm] = mdl->imgnorm,
+        };
+        sg_apply_bindings(&bind);
         
-        munis->model = static_objs.data[i].matrix;
-
+        munis->model = obj->matrix;
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(*munis));
-        sg_draw(0, static_objs.data[i].model->vcount, 1);
+        sg_draw(0, mdl->vcount, 1);
     }
 
-    if (m2.obj.model) {
-        obj_bind(m2.obj.model, &fi->mainbind);
-        sg_apply_bindings(&fi->mainbind);
-
-        munis->model = m2.obj.matrix;
+    if (m2.obj.om) {
+        struct staticmapobj *obj = &m2.obj;
+        const struct obj_model *mdl = m2.obj.om;
+        sg_bindings bind = {
+            .vertex_buffers[0] = mdl->vbuf,
+            .fs_images[SLOT_imgdiff] = mdl->imgdiff,
+            .fs_images[SLOT_imgspec] = mdl->imgspec,
+            //.fs_images[SLOT_imgnorm] = mdl->imgnorm,
+        };
+        sg_apply_bindings(&bind);
+        
+        munis->model = obj->matrix;
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(*munis));
-        sg_draw(0, m2.obj.model->vcount, 1);
+        sg_draw(0, mdl->vcount, 1);
     }
 
     simpleobj_hitbox_render(fi, munis->vp);
@@ -311,6 +348,18 @@ static void do_render_lightcubes(struct frameinfo *fi, double delta, vs_params_t
     }
 }
 
+static void do_render_animat_objs(struct frameinfo *fi, double delta)
+{
+    animodel_mngr_upload_bones();
+    sg_apply_pipeline(fi->pipes.animodel);
+
+    int end = animatmapobj_mngr_end();
+    for (int i = 0; i < end; ++i) {
+        struct animatmapobj *obj = animatmapobj_mngr_get(i);
+        animodel_render(&obj->am, fi, obj->matrix);
+    }
+}
+
 static void do_render(struct frameinfo *fi, double delta)
 {
     hmm_mat4 projection = HMM_Perspective(75.0f, (float)WW/(float)WH, 0.1f, 2000.0f);
@@ -323,12 +372,13 @@ static void do_render(struct frameinfo *fi, double delta)
     sg_begin_default_pass(&fi->pass_action, w, h);
     hmm_mat4 view = HMM_LookAt(fi->cam.pos, HMM_AddVec3(fi->cam.pos, fi->cam.front), fi->cam.up);
     hmm_mat4 vp = HMM_MultiplyMat4(projection, view);
+    fi->vp = vp;
     vs_params_t munis = { .vp = vp };
     draw_terrain(fi, vp, fi->dlight_dir, fi->cam.pos, shadow.lightspace);
  
     do_render_static_objs(fi, delta, &munis);
     do_render_lightcubes(fi, delta, &munis);
-    animobj_render(&fi->pipes, vp);
+    do_render_animat_objs(fi, delta);
 
     SDL_GetMouseState(&m2.mx, &m2.my);
     m2.ww = WW;
@@ -346,7 +396,7 @@ static void do_render(struct frameinfo *fi, double delta)
     SDL_GL_SwapWindow(sdl.win);
 }
 
-static int init_imgdummy()
+static int imgdummy_init()
 {
     char data[4] = {0,0,0,0};
 
@@ -364,6 +414,10 @@ static int init_imgdummy()
 
     return 0;
 }
+static void imgdummy_kill()
+{
+    sg_destroy_image(imgdummy);
+}
 
 int main(int argc, char **argv)
 {
@@ -372,14 +426,15 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    assert(!init_imgdummy());
-    assert(!vmodel_init());
-    assert(!init_static_objects());
+    assert(!imgdummy_init());
     assert(!pipelines_init(&fi.pipes));
     assert(!init_terrain());
     assert(!shadowmap_init());
     assert(!md5loader_init());
-    assert(!animobj_init());
+    assert(!objloader_init());
+    assert(!animodel_mngr_init());
+    assert(!animatmapobj_mngr_init());
+    assert(!staticmapobj_mngr_init());
 
     float vertices[36*3] =
     {
@@ -456,7 +511,16 @@ int main(int argc, char **argv)
 
     }
 
+    staticmapobj_mngr_kill();
+    animatmapobj_mngr_kill();
+    animodel_mngr_kill();
+    objloader_kill();
+    md5loader_kill();
+    shadowmap_kill();
+    //kill_terrain();
     pipelines_kill(&fi.pipes);
+    imgdummy_kill();
+    
 
     igsdl2_Shutdown();
     sg_shutdown();
