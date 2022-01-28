@@ -213,6 +213,7 @@ static void do_update_animated(double delta)
     for (int i = 0; i < end; ++i) {
         animodel_play(mdls[i], delta);
         animodel_plain(mdls[i]);
+        //animodel_interpolate(mdls[i]);
         animodel_joint2matrix(mdls[i]);
     }
 }
@@ -247,7 +248,7 @@ static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_
         .direction = fi->dlight_dir,
         .ambient = fi->dlight_ambi,
         .diffuse = fi->dlight_diff,
-        .specular = HMM_Vec3(0.5f, 0.5f, 0.5f)
+        .specular = fi->dlight_spec,
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_dir_light, &SG_RANGE(fs_dir_light));
 
@@ -307,7 +308,7 @@ static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_
 
     if (m2.obj.om) {
         struct staticmapobj *obj = &m2.obj;
-        const struct obj_model *mdl = m2.obj.om;
+        const struct obj_model *mdl = obj->om;
         sg_bindings bind = {
             .vertex_buffers[0] = mdl->vbuf,
             .fs_images[SLOT_imgdiff] = mdl->imgdiff,
@@ -497,6 +498,10 @@ int main(int argc, char **argv)
     };
 
     terrain_set_shadowmap(shadow.depthmap);
+    m2.obj.matrix = calc_matrix(
+            HMM_Vec3(0.0f, 0.0f, 0.0f),
+            HMM_Vec4(0.0f, 0.0f, 0.0f, 0.0f),
+            HMM_Vec3(10.0f, 10.0f, 10.0f));
 
     uint64_t now = SDL_GetPerformanceCounter();
     uint64_t last = 0;

@@ -105,8 +105,8 @@ freebuf:
 void staticmapobj_setpos(struct staticmapobj *obj, hmm_vec3 pos)
 {
     obj->matrix.Elements[3][0] = pos.X;
-    obj->matrix.Elements[3][0] = pos.Y;
-    obj->matrix.Elements[3][0] = pos.Z;
+    obj->matrix.Elements[3][1] = pos.Y;
+    obj->matrix.Elements[3][2] = pos.Z;
 }
 
 int staticmapobj_mngr_init()

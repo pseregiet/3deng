@@ -158,8 +158,8 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
     fs_params_t fsparm = {
         .uambi = fi->dlight_ambi,
         .udiff = fi->dlight_diff,
-        .uspec = HMM_Vec3(0.5f, 0.5f, 0.5f),
-        .shadowmap_size = HMM_Vec2(1024.0f, 1024.0f),
+        .uspec = fi->dlight_spec,
+        .shadowmap_size = HMM_Vec2(2048.0f, 2048.0f),
     };
 
     int idx = 0;
