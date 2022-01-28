@@ -1,0 +1,6 @@
+Source: https://github.com/floooh/sokol
+License: Zlib
+Commit used: c9a36146320aa49ac79e44467d98d9eca31243f1
+Changes:
+ * only sokol_gfx.h, README.md, LICENSE files taken
+ * 2 patches on top; look in 'patches' dir

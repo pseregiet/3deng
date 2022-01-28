@@ -3,7 +3,7 @@
 #include "fileops.h"
 #include "khash.h"
 #include "kvec.h"
-#include "cJSON/cJSON.h"
+#include "cJSON.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -29,17 +29,17 @@ inline static char *addname(struct growing_alloc *alloc, const char *name)
 
 static int append_model(const char *fp, const char *name)
 {
-    struct obj_model *mdl = kv_top(models.models);
-    if (objmodel_open(fp, mdl)) {
-        kv_pop(models.models);
+    struct obj_model mdl;
+    if (objmodel_open(fp, &mdl)) {
         return -1;
     }
 
-    char *newname = addname(&models.names, name);
+    kv_push(struct obj_model, models.models, mdl);
 
+    char *newname = addname(&models.names, name);
     int ret;
     khint_t idx = kh_put(modelmap, &models.map, newname, &ret);
-    kh_value(&models.map, idx) = mdl;
+    kh_value(&models.map, idx) = &kv_A(models.models, kv_size(models.models)-1);
 
     return 0;
 }

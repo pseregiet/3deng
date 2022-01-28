@@ -1,0 +1,5 @@
+Source: https://github.com/thisistherk/fast_obj
+License: MIT
+Commit used: d2c273248a5ecdbbe28391ef952e70f8413d4f66
+Changes:
+ * only fast_obj.h, README.md, LICENSE files taken

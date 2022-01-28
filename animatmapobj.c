@@ -1,7 +1,7 @@
 #include "animatmapobj.h"
 #include "fileops.h"
 #include "extrahmm.h"
-#include "cJSON/cJSON.h"
+#include "cJSON.h"
 #include "kvec.h"
 #include <string.h>
 #include <assert.h>

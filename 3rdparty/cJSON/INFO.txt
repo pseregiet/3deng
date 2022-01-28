@@ -1,0 +1,5 @@
+Source: https://github.com/DaveGamble/cJSON
+License: MIT
+Commit used: a6424b85dde200a87cac26451c6f0a6f3426681f
+Changes:
+ * only cJSON.h, cJSON.c, README.md, LICENSE files taken

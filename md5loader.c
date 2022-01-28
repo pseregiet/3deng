@@ -3,7 +3,7 @@
 #include "growing_allocator.h"
 #include "fileops.h"
 #include "khash.h"
-#include "cJSON/cJSON.h"
+#include "cJSON.h"
 #include <assert.h>
 #include <stdio.h>
 

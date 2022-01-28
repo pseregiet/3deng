@@ -6,6 +6,11 @@
 COMP="gcc"
 
 OPTS="\
+    -I./3rdparty/cJSON \
+    -I./3rdparty/fast_obj \
+    -I./3rdparty/hmm \
+    -I./3rdparty/klib \
+    -I./3rdparty/sokol \
     -g\
 "
 
@@ -18,7 +23,7 @@ LIBS="\
 "
 
 FILE="\
-    cJSON/cJSON.c \
+    3rdparty/cJSON/cJSON.c \
     animatmapobj.c \
     animodel.c \
     animodel_mngr.c \

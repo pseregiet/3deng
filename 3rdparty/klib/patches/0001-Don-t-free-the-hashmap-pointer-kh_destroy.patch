@@ -1,0 +1,31 @@
+From 38d6762205bc39bb9312c0fc1b0547feb94adf21 Mon Sep 17 00:00:00 2001
+From: pseregiet <patryk.seregiet@gmail.com>
+Date: Fri, 28 Jan 2022 20:35:41 +0100
+Subject: [PATCH] Don't free the hashmap pointer kh_destroy
+
+All my hashmaps are on stack or global
+so don't free them in kh_destroy
+---
+ khash.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/khash.h b/khash.h
+index f75f347..d29f6a9 100644
+--- a/khash.h
++++ b/khash.h
+@@ -217,7 +217,6 @@ static const double __ac_HASH_UPPER = 0.77;
+ 		if (h) {														\
+ 			kfree((void *)h->keys); kfree(h->flags);					\
+ 			kfree((void *)h->vals);										\
+-			kfree(h);													\
+ 		}																\
+ 	}																	\
+ 	SCOPE void kh_clear_##name(kh_##name##_t *h)						\
+@@ -625,3 +624,4 @@ typedef const char *kh_cstr_t;
+ 	KHASH_INIT(name, kh_cstr_t, khval_t, 1, kh_str_hash_func, kh_str_hash_equal)
+ 
+ #endif /* __AC_KHASH_H */
++
+-- 
+2.35.0
+
