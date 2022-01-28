@@ -59,6 +59,7 @@ struct frameinfo fi = {
     .dlight_dir =  (hmm_vec3){0.5f, 1.0f, 0.3f},
     .dlight_diff = (hmm_vec3){0.4f, 0.4f, 0.4f},
     .dlight_ambi = (hmm_vec3){0.05f, 0.05f, 0.05f},
+    .dlight_spec = (hmm_vec3){0.5f, 0.5f, 0.5f},
 };
 
 

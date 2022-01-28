@@ -120,7 +120,7 @@ void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
 
         fs_md5_t unifs = {
             .uambi = fi->dlight_ambi,
-            .uambi = fi->dlight_diff,
+            .udiff = fi->dlight_diff,
             .uspec = fi->dlight_spec,
         };
         sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_vs_md5, &SG_RANGE(unifs));

@@ -131,7 +131,7 @@ void main() {
 
     vec3 specular = pixspec * spec * uspec;
 
-    vec3 light = ambient + (diffuse + specular) * pixdiff;
+    vec3 light = (ambient + (diffuse + specular)) * pixdiff;
     frag = vec4(light, 1.0);
 }
 @end
