@@ -50,6 +50,9 @@ inline static char *get_from_pool(struct growing_alloc *ga, int size, int idx)
 char *growing_alloc_get(struct growing_alloc *ga, int size)
 {
     char *ret = 0;
+    if (size > ga->poolsize)
+        return ret;
+
     for (int i = 0; i < ga->poolscount; ++i) {
         ret = get_from_pool(ga, size, i);
         if (ret)
