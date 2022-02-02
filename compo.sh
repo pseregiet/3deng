@@ -11,6 +11,7 @@ OPTS="\
     -I./3rdparty/hmm \
     -I./3rdparty/klib \
     -I./3rdparty/sokol \
+    -I./3rdparty/qoi \
     -g\
 "
 
@@ -24,6 +25,7 @@ LIBS="\
 
 FILE="\
     3rdparty/cJSON/cJSON.c \
+    qoi.c \
     animatmapobj.c \
     animodel.c \
     animodel_mngr.c \

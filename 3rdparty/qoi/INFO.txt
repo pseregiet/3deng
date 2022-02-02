@@ -1,0 +1,6 @@
+Source: https://github.com/phoboslab/qoi
+License: MIT
+Commit used: 6c0831f91ffde5dfe2ceef32cbaff91d62b0e0ee
+Changes:
+  * only qoi.h, README.md files taken
+  * 1 patch on top; look in 'patches' dir
