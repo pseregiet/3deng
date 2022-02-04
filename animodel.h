@@ -27,5 +27,7 @@ void animodel_joint2matrix(struct animodel *am);
 void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model);
 
 void animodel_pipeline(struct pipelines *pipes);
+void animodel_shadow_pipeline(struct pipelines *pipes);
+void animodel_shadow_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model);
 #endif
 

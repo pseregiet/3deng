@@ -162,3 +162,72 @@ void animodel_pipeline(struct pipelines *pipes)
     });
 }
 
+void animodel_shadow_pipeline(struct pipelines *pipes)
+{
+    pipes->animodel_shadow_shd = sg_make_shader(shdmd5_depth_shader_desc(SG_BACKEND_GLCORE33));
+
+    const int stride = (11 * sizeof(float) + (2 * sizeof(uint16_t)));
+    const int offset = (11 * sizeof(float));
+    sg_pipeline_desc desc = {
+        .shader = pipes->animodel_shadow_shd,
+        .layout = {
+            .attrs = {
+                [ATTR_vs_md5_depth_apos] = {
+                    .format = SG_VERTEXFORMAT_FLOAT3,
+                    .offset = 0
+                },
+                [ATTR_vs_md5_depth_aweight] = {
+                    .format = SG_VERTEXFORMAT_SHORT2,
+                    .offset = offset
+                },
+            },
+            .buffers = {
+                [ATTR_vs_md5_depth_apos] = {.stride = stride},
+                [ATTR_vs_md5_depth_aweight] = {.stride = stride},
+            },
+        },
+        .depth = {
+            .pixel_format = SG_PIXELFORMAT_DEPTH,
+            .compare = SG_COMPAREFUNC_LESS_EQUAL,
+            .write_enabled = true,
+        },
+        .cull_mode = SG_CULLMODE_FRONT,
+        .index_type = SG_INDEXTYPE_UINT16,
+    };
+
+    pipes->animodel_shadow = sg_make_pipeline(&desc);
+}
+
+void animodel_shadow_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
+{
+    struct md5_model *mdl = am->model;
+    for (int i = 0; i < mdl->mcount; ++i) {
+        struct md5_mesh *mesh = &mdl->meshes[i];
+
+        sg_bindings bind = {
+            .vertex_buffers[0] = mesh->vbuf,
+            .index_buffer = mesh->ibuf,
+            .vs_images[SLOT_weightmap] = mdl->weightmap,
+            .vs_images[SLOT_bonemap] = am->bonemap,
+        };
+        sg_apply_bindings(&bind);
+
+        vs_md5_depth_t univs = {
+            .umodel = HMM_MultiplyMat4(fi->shadow.lightspace, model),
+            .uboneuv = {
+                am->boneuv[0],
+                am->boneuv[1],
+                am->boneuv[2],
+                am->boneuv[3],
+            },
+            .uweightuv = {
+                mesh->woffset,
+                0,
+                mdl->weightw,
+                mdl->weighth,
+            },
+        };
+        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5_depth, &SG_RANGE(univs));
+        sg_draw(0, mesh->icount*3, 1);
+    }
+}

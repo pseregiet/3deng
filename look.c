@@ -376,7 +376,7 @@ static void do_render(struct frameinfo *fi, double delta)
     hmm_mat4 vp = HMM_MultiplyMat4(projection, view);
     fi->vp = vp;
     vs_params_t munis = { .vp = vp };
-    draw_terrain(fi, vp, fi->dlight_dir, fi->cam.pos, shadow.lightspace);
+    draw_terrain(fi, vp, fi->dlight_dir, fi->cam.pos, fi->shadow.lightspace);
  
     do_render_static_objs(fi, delta, &munis);
     do_render_lightcubes(fi, delta, &munis);
@@ -497,7 +497,7 @@ int main(int argc, char **argv)
         .colors[0] = {.action = SG_ACTION_CLEAR, .value = {0.5, 0.5, 0.5, 1.0 }},
     };
 
-    terrain_set_shadowmap(shadow.depthmap);
+    terrain_set_shadowmap(fi.shadow.depthmap);
     m2.obj.matrix = calc_matrix(
             HMM_Vec3(0.0f, 0.0f, 0.0f),
             HMM_Vec4(0.0f, 0.0f, 0.0f, 0.0f),

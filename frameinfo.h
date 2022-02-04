@@ -9,14 +9,25 @@
 #include <stdbool.h>
 
 struct frameinfo {
+    struct worldmap map;
     struct pipelines pipes;
     struct camera cam;
+    struct shadow {
+        sg_shader shd;
+        sg_bindings tbind;
+        sg_bindings mbind;
+        sg_pipeline tpip;
+        sg_pipeline pip;
+        sg_pass pass;
+        sg_pass_action act;
+        sg_image colormap;
+        sg_image depthmap;
+        hmm_mat4 lightspace;
+    } shadow;
     sg_bindings lightbind;
     sg_bindings terrainbind[4];
 
     sg_pass_action pass_action;
-    struct worldmap map;
-    //struct animobj archvile;
 
     bool lightsenable[32];
     hmm_vec3 dlight_dir;

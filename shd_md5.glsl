@@ -3,6 +3,70 @@
 @ctype vec4 hmm_vec4
 @ctype mat4 hmm_mat4
 
+@block bone_functions
+void get_mat4_from_texture(in sampler2D map, in ivec4 boneuv, in int index, out mat4 mat) {
+    ivec2 pos = ivec2(boneuv.x + index, boneuv.y);
+    if (pos.x >= boneuv.z) {
+        pos.y++;
+        pos.x = pos.x % boneuv.z;
+    }
+    vec4 m1 = texelFetch(map, pos, 0); pos.x++;
+    vec4 m2 = texelFetch(map, pos, 0); pos.x++;
+    vec4 m3 = texelFetch(map, pos, 0); pos.x++;
+    vec4 m4 = texelFetch(map, pos, 0);
+    mat = mat4(m1, m2, m3, m4);
+}
+
+void get_weight_from_texture(in sampler2D map, in ivec4 weightuv, in int index, out float bias, out float joint) {
+    ivec2 pos = ivec2(weightuv.x + index, weightuv.y);
+    if (weightuv.x >= weightuv.z) {
+        pos.y++;
+        pos.x = pos.x % weightuv.z;
+    }
+    vec4 pixel = texelFetch(map, pos, 0);
+    bias = pixel.x;
+    joint = pixel.y;
+}
+@end
+
+@vs vs_md5_depth
+@include_block bone_functions
+
+uniform vs_md5_depth {
+    mat4 umodel;
+    ivec4 uboneuv;
+    ivec4 uweightuv;
+};
+uniform sampler2D bonemap;
+uniform sampler2D weightmap;
+in vec3 apos;
+in vec2 aweight;
+
+void main() {
+    mat4 bonetransform = mat4(0.0);
+    int wstart = int(aweight.x);
+    int wcount = int(aweight.y);
+
+    for (int i = 0; i < wcount; ++i) {
+        float bias;
+        float joint;
+        mat4 bonemat;
+        get_weight_from_texture(weightmap, uweightuv, wstart+i, bias, joint);
+        get_mat4_from_texture(bonemap, uboneuv, int(joint)*4, bonemat);
+
+        bonetransform += (bonemat * bias);
+    }
+
+    gl_Position = umodel * bonetransform * vec4(apos, 1.0);
+}
+@end
+
+@fs fs_md5_depth
+void main() {}
+@end
+
+@program shdmd5_depth vs_md5_depth fs_md5_depth
+
 @vs vs_md5
 uniform vs_md5 {
     mat4 uvp;
@@ -31,29 +95,7 @@ out INTERFACE {
     vec2 uv;
 } inter;
 
-void get_mat4_from_texture(in sampler2D map, in int index, out mat4 mat) {
-    ivec2 pos = ivec2(uboneuv.x + index, uboneuv.y);
-    if (pos.x >= uboneuv.z) {
-        pos.y++;
-        pos.x = pos.x % uboneuv.z;
-    }
-    vec4 m1 = texelFetch(map, pos, 0); pos.x++;
-    vec4 m2 = texelFetch(map, pos, 0); pos.x++;
-    vec4 m3 = texelFetch(map, pos, 0); pos.x++;
-    vec4 m4 = texelFetch(map, pos, 0);
-    mat = mat4(m1, m2, m3, m4);
-}
-
-void get_weight_from_texture(in sampler2D map, in int index, out float bias, out float joint) {
-    ivec2 pos = ivec2(uweightuv.x + index, uweightuv.y);
-    if (uweightuv.x >= uweightuv.z) {
-        pos.y++;
-        pos.x = pos.x % uweightuv.z;
-    }
-    vec4 pixel = texelFetch(map, pos, 0);
-    bias = pixel.x;
-    joint = pixel.y;
-}
+@include_block bone_functions
 
 void main() {
     mat4 bonetransform = mat4(0.0);
@@ -64,8 +106,8 @@ void main() {
         float bias;
         float joint;
         mat4 bonemat;
-        get_weight_from_texture(weightmap, wstart+i, bias, joint);
-        get_mat4_from_texture(bonemap, int(joint)*4, bonemat);
+        get_weight_from_texture(weightmap, uweightuv, wstart+i, bias, joint);
+        get_mat4_from_texture(bonemap, uboneuv, int(joint)*4, bonemat);
 
         bonetransform += (bonemat * bias);
     }
