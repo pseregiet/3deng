@@ -11,23 +11,6 @@
 
 extern struct frameinfo fi;
 
-/*
-static hmm_vec3 computeTangent(hmm_vec3 pos0, hmm_vec3 pos1, hmm_vec3 pos2, hmm_vec2 uv0, hmm_vec2 uv1, hmm_vec2 uv2) {
-    hmm_vec3 edge0 = HMM_SubtractVec3(pos1, pos0);
-    hmm_vec3 edge1 = HMM_SubtractVec3(pos2, pos0);
-    hmm_vec2 delta_uv0 = HMM_SubtractVec2(uv1, uv0);
-    hmm_vec2 delta_uv1 = HMM_SubtractVec2(uv2, uv0);
-
-    float f = 1.f / (delta_uv0.X * delta_uv1.Y - delta_uv1.X * delta_uv0.Y);
-
-    float x = f * (delta_uv1.Y * edge0.X - delta_uv0.Y * edge1.X);
-    float y = f * (delta_uv1.Y * edge0.Y - delta_uv0.Y * edge1.Y);
-    float z = f * (delta_uv1.Y * edge0.Z - delta_uv0.Y * edge1.Z);
-
-    return HMM_Vec3(x, y, z);
-}
-*/
-
 void terrain_pipeline(struct pipelines *pipes)
 {
     pipes->terrain_shd = sg_make_shader(terrainshd_shader_desc(SG_BACKEND_GLCORE33));
@@ -63,25 +46,25 @@ void terrain_pipeline(struct pipelines *pipes)
 int init_terrain()
 {
     const char *filesd[] = {
-        "terraintex/grass_mix_d.jpg",
-        "terraintex/desert_mud_d.jpg",
-        "terraintex/snow_mud_d.jpg",
-        "terraintex/ground_dry2_d.jpg",
-        "terraintex/mntn_dark_d.jpg",
+        "terraintex/grass_mix_d.qoi",
+        "terraintex/desert_mud_d.qoi",
+        "terraintex/snow_mud_d.qoi",
+        "terraintex/ground_dry2_d.qoi",
+        "terraintex/mntn_dark_d.qoi",
     };
     const char *filess[] = {
-        "terraintex/grass_mix_s.jpg",
-        "terraintex/desert_mud_s.jpg",
-        "terraintex/snow_mud_s.jpg",
-        "terraintex/mntn_dark_s.jpg",
-        "terraintex/ground_dry2_s.jpg",
+        "terraintex/grass_mix_s.qoi",
+        "terraintex/desert_mud_s.qoi",
+        "terraintex/snow_mud_s.qoi",
+        "terraintex/mntn_dark_s.qoi",
+        "terraintex/ground_dry2_s.qoi",
     };
     const char *filesn[] = {
-        "terraintex/grass_mix_n.jpg",
-        "terraintex/desert_mud_n.jpg",
-        "terraintex/snow_mud_n.jpg",
-        "terraintex/mntn_dark_n.jpg",
-        "terraintex/ground_dry2_n.jpg",
+        "terraintex/grass_mix_n.qoi",
+        "terraintex/desert_mud_n.qoi",
+        "terraintex/snow_mud_n.qoi",
+        "terraintex/mntn_dark_n.qoi",
+        "terraintex/ground_dry2_n.qoi",
     };
  /*   
     const char *filesd[] = {
@@ -112,12 +95,7 @@ int init_terrain()
         fatalerror("can't load terrain textures\n");
         return -1;
     }
-/*
-    if (load_sg_image("terraintex/blend.png", &imgb)) {
-        fatalerror("can't load terrain blend\n");
-        return -1;
-    }
-*/
+
     if (worldmap_init(&fi.map, "metin2_map_battlefied"))
         return -1;
 
@@ -171,7 +149,7 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         
             munis.model = HMM_Translate(HMM_Vec3(fi->map.scale * x, 0.0f, fi->map.scale * y));
             munis.unormalmat = extrahmm_transpose_inverse_mat3(munis.model);
-            fsparm.blendoffset = HMM_Vec2(ty * y, tx * (1-x));
+            fsparm.blendoffset = HMM_Vec2(ty * y, tx * x);
         
             sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(munis));
             sg_apply_uniforms(SG_SHADERSTAGE_FS, 0, &SG_RANGE(fsparm));

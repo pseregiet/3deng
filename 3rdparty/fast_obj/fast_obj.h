@@ -665,13 +665,18 @@ const char* parse_texcoord(fastObjData* data, const char* ptr)
     unsigned int ii;
     float        v;
 
-
+/*
     for (ii = 0; ii < 2; ii++)
     {
         ptr = parse_float(ptr, &v);
         array_push(data->mesh->texcoords, v);
     }
-
+*/
+    ptr = parse_float(ptr, &v);
+    array_push(data->mesh->texcoords, v);
+    ptr = parse_float(ptr, &v);
+    v = 1.0f - v;
+    array_push(data->mesh->texcoords, v);
     return ptr;
 }
 

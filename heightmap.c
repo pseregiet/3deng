@@ -55,7 +55,7 @@ static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, 
 
             //UVs
             verts[vptr * 11 + 6] = ((float)x / vsize);
-            verts[vptr * 11 + 7] = 1.0f - ((float)y / vsize);
+            verts[vptr * 11 + 7] = ((float)y / vsize);
 
             //tangents
             //verts[vptr * 11 +  8] = 0.0f;
@@ -191,10 +191,10 @@ freepixels:
 static int load_blendmap(struct worldmap *map, const char *fn)
 {
     const char *files[] = {
-        "metin2_map_battlefied/alpha_1.png", 
-        "metin2_map_battlefied/alpha_2.png", 
-        "metin2_map_battlefied/alpha_3.png", 
-        "metin2_map_battlefied/alpha_4.png", 
+        "metin2_map_battlefied/alpha_1.qoi", 
+        "metin2_map_battlefied/alpha_2.qoi", 
+        "metin2_map_battlefied/alpha_3.qoi", 
+        "metin2_map_battlefied/alpha_4.qoi", 
     };
 
     if (load_sg_image_array(files, &map->blendmap, 4)) {

@@ -206,11 +206,11 @@ static void make_shader(struct md5_mesh *mesh, char *shader)
     mesh->imgs = imgdummy;
     mesh->imgn = imgdummy;
 
-    snprintf(fn, 0x200, "md5/%s_d.png", shader);
+    snprintf(fn, 0x200, "md5/%s_d.qoi", shader);
     load_sg_image(fn, &mesh->imgd);
-    snprintf(fn, 0x200, "md5/%s_s.png", shader);
+    snprintf(fn, 0x200, "md5/%s_s.qoi", shader);
     load_sg_image(fn, &mesh->imgs);
-    snprintf(fn, 0x200, "md5/%s_n.png", shader);
+    snprintf(fn, 0x200, "md5/%s_n.qoi", shader);
     load_sg_image(fn, &mesh->imgn);
 }
 

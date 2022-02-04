@@ -353,7 +353,7 @@ int qoi_parse_header(const void *data, int size, qoi_desc *desc)
     desc->channels = bytes[p++];
     desc->colorspace = bytes[p++];
 
-    if (!desc->width || desc->height || desc->channels < 3)
+    if (!desc->width || !desc->height || desc->channels < 3)
         return -1;
 
     if (desc->channels > 4 || desc->colorspace > 1)
