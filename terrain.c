@@ -52,7 +52,7 @@ int init_terrain()
     if (!imgd.id || !imgs.id || !imgn.id)
         return -1;
 
-    if (worldmap_init(&fi.map, "metin2_map_battlefied"))
+    if (worldmap_init(&fi.map, "worldmap"))
         return -1;
 
     for (int i = 0; i < 4; ++i) {

@@ -1,5 +1,6 @@
 #include "animodel.h"
 #include "genshd_md5.h"
+#include <stdio.h>
 #include <string.h>
 
 static int lmao = 0;

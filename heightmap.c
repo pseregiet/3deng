@@ -1,4 +1,5 @@
 #include "heightmap.h"
+#include "fileops.h"
 #include "extrahmm.h"
 
 #include <stdio.h>
@@ -13,15 +14,10 @@ inline static float get_height(uint16_t pixel)
 
 static hmm_vec3 get_normal(uint16_t *gfx, int x, int y, int w, int h)
 {
-    float hl = 0.0f, hr = 0.0f, hd = 0.0f, hu = 0.0f;
-    //if (x)
-        hl = get_height(gfx[ ((y+0)*w) + x-1 ]);
-    //if (x < w-1)
-        hr = get_height(gfx[ ((y+0)*w) + x+1 ]);
-    //if (y)
-        hd = get_height(gfx[ ((y-1)*w) + x-0 ]);
-    //if (y < h-1)
-        hu = get_height(gfx[ ((y+1)*w) + x-0 ]);
+    float hl = get_height(gfx[ ((y+0)*w) + x-1 ]);
+    float hr = get_height(gfx[ ((y+0)*w) + x+1 ]);
+    float hd = get_height(gfx[ ((y-1)*w) + x-0 ]);
+    float hu = get_height(gfx[ ((y+1)*w) + x-0 ]);
 
     hmm_vec3 v3 = {hl-hr, 2.0f, hd-hu};
     return HMM_NormalizeVec3(v3);
@@ -110,36 +106,35 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
     const int vbufsize = 129 * 129 * 11;
     const int ibufsize = 128 * 128 * 6;
 
+    const int hbufsize = 131 * 131;
+    const int hbufstride = hbufsize * w;
+
+    uint16_t *indices = malloc(ibufsize * w * h * sizeof(uint16_t));
+    uint16_t *pixels = malloc(maxsize * w * h);
+    float *verts = malloc(vbufsize * w * h * sizeof(float));
+    char path[0x1000];
+    struct file f;
     int stride = 131;
     int bindex = 0;
     int ret = -1;
-    char path[0x1000];
-    uint16_t *indices = malloc(ibufsize * w * h * sizeof(uint16_t));
-    float *verts = malloc(vbufsize * w * h * sizeof(float));
 
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
-            sprintf(path, "%s/%03d%03d/height.raw", fn, x, y);
-            FILE *f = fopen(path, "rb");
-            if (!f) {
-                printf("cannot open file %s\n", path);
+            snprintf(path, 0x1000, "data/%s/%03d%03d/height.raw", fn, x, y);
+            if (openfile(&f, path))
+                goto freepixels;
+
+            if (f.usize != maxsize) {
+                printf("File %s has weird size %d, expected %d\n", path, f.usize, maxsize);
+                closefile(&f);
                 goto freepixels;
             }
-            
-            fseek(f, 0, SEEK_END);
-            int fsize = ftell(f);
-            fseek(f, 0, SEEK_SET);
-
-            if (fsize != maxsize) {
-                printf("File %s has weird size %d, expected %d\n", fsize, maxsize);
-                fclose(f);
-                goto freepixels;
-            }
-
-            uint16_t *pixels = malloc(maxsize);
-            map->hmap[y][x] = pixels;
-            fread(pixels, 1, maxsize, f);
-            fclose(f);
+//this is for editor only. And maybe for collision tests in the future or something
+            uint16_t *heightbuf = &pixels[hbufstride * y + (hbufsize * x)];
+            map->hmap[y][x] = heightbuf;
+            memcpy(heightbuf, f.udata, f.usize);
+//----
+            closefile(&f);
         }
     }
 
@@ -181,16 +176,10 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
     ret = 0;
 
 freepixels:
-    //free(pixels);
     free(indices);
     free(verts);
 
     return ret;
-}
-
-static int load_blendmap(struct worldmap *map, const char *fn)
-{
-    return 0;
 }
 
 int worldmap_init(struct worldmap *map, const char *fn)
