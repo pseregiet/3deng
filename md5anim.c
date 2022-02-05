@@ -2,6 +2,7 @@
 #include <string.h>
 #include "md5model.h"
 #include "extrahmm.h"
+#include "fileops.h"
 
 struct jointinfo {
     char name[64];
@@ -78,26 +79,36 @@ void md5anim_kill(struct md5_anim *anim)
         free(anim->bboxes);
 }
 
+inline static int getnextline(char **line, char **nextline)
+{
+    *nextline = strchr(*line, '\n');
+    if (!*nextline || !(*nextline)[1])
+        return -1;
+
+    (*nextline)[0] = 0;
+    return 0;
+}
+
 int md5anim_open(const char *fn, struct md5_anim *anim)
 {
-    char line[0x200];
-    FILE *f;
     struct jointinfo *jinfo = 0;
     struct baseframe *base = 0;
     float *fdata = 0;
+    char *line;
+    char *nextline;
+    struct file f;
     int version;
     int animccount;
     int findex;
     int ret = -1;
 
-    f = fopen(fn, "rb");
-    if (!f) {
-        printf("md5anim_open: Can't open file %s\n", fn);
-        return ret;
-    }
+    if (openfile(&f, fn))
+        return -1;
 
-    while (!feof(f)) {
-        fgets(line, sizeof(line), f);
+    line = f.udata;
+    while (1) {
+        if (getnextline(&line, &nextline))
+            break;
 
         if (sscanf(line, " MD5Version %d", &version) == 1) {
             if (version != 10) {
@@ -131,7 +142,10 @@ int md5anim_open(const char *fn, struct md5_anim *anim)
         }
         else if (strncmp(line, "hierarchy {", 11) == 0) {
             for (int i = 0; i < anim->jcount; ++i) {
-                fgets(line, sizeof(line), f);
+                line = nextline+1;
+                if (getnextline(&line, &nextline))
+                    break;
+
                 struct jointinfo *j = &jinfo[i];
                 sscanf(line, " %64s %d %d %d", 
                         j->name, &j->parent, &j->flags, &j->startidx);
@@ -139,7 +153,10 @@ int md5anim_open(const char *fn, struct md5_anim *anim)
         }
         else if (strncmp(line, "bounds {", 8) == 0) {
             for (int i = 0; i < anim->fcount; ++i) {
-                fgets(line, sizeof(line), f);
+                line = nextline+1;
+                if (getnextline(&line, &nextline))
+                    break;
+
                 struct md5_bbox *b = &anim->bboxes[i];
                 sscanf(line, " ( %f %f %f ) ( %f %f %f )",
                             &b->min.X, &b->min.Y, &b->min.Z,
@@ -148,7 +165,9 @@ int md5anim_open(const char *fn, struct md5_anim *anim)
         }
         else if (strncmp(line, "baseframe {", 10) == 0) {
             for (int i = 0; i < anim->jcount; ++i) {
-                fgets(line, sizeof(line), f);
+                line = nextline+1;
+                if (getnextline(&line, &nextline))
+                    break;
                 struct baseframe *b = &base[i];
                 if (sscanf(line, " ( %f %f %f ) ( %f %f %f )",
                             &b->pos.X, &b->pos.Y, &b->pos.Z,
@@ -159,12 +178,19 @@ int md5anim_open(const char *fn, struct md5_anim *anim)
             }
         }
         else if (sscanf(line, " frame %d", &findex) == 1) {
-            for (int i = 0; i < animccount; ++i)
-                fscanf(f, "%f", &fdata[i]);
+            line = nextline + 1;
+            for (int i = 0; i < animccount; ++i) {
+                int n;
+                sscanf(line, "%f%n", &fdata[i], &n);
+                line = &line[n];
+            }
                 
             int jc = anim->jcount;
             buildframe(jinfo, base, fdata, &anim->frames[findex * jc], jc);
+            continue;
         }
+
+        line = nextline+1;
     }
 
     ret = checkanim(anim);
@@ -179,7 +205,7 @@ int md5anim_open(const char *fn, struct md5_anim *anim)
         free(fdata);
 
 closefile:
-    fclose(f);
+    closefile(&f);
     return ret;
 }
 

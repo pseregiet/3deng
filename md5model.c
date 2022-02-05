@@ -3,6 +3,7 @@
 #include "md5model.h"
 #include "extrahmm.h"
 #include "texloader.h"
+#include "fileops.h"
 
 struct temp_md5_vert {
     hmm_vec2 uv;
@@ -34,17 +35,31 @@ struct temp_md5_model {
     int mcount;
 };
 
-static void md5model_mesh(FILE *f, char *line, struct temp_md5_model *model, int meshidx)
+inline static int getnextline(char **line, char **nextline)
+{
+    *nextline = strchr(*line, '\n');
+    if (!*nextline || !(*nextline)[1])
+        return -1;
+
+    (*nextline)[0] = 0;
+    return 0;
+}
+
+static void md5model_mesh(struct file *f, char **curline, struct temp_md5_model *model, int meshidx)
 {
     struct temp_md5_mesh *mesh = &model->meshes[meshidx];
+    char *line = (*curline)+1;
+    char *nextline;
     int vidx = 0;
     int tidx = 0;
     int widx = 0;
     int idata[3];
     float fdata[4];
 
-    while ((line[0] != '}') && !feof(f)) {
-        fgets(line, 0x200, f);
+    while ((line[0] != '}') && line[0]) {
+        if (getnextline(&line, &nextline))
+            return;
+
         if (strstr(line, "shader ")) {
             int quote = 0;
             int j = 0;
@@ -98,7 +113,10 @@ static void md5model_mesh(FILE *f, char *line, struct temp_md5_model *model, int
             mesh->wbuf[widx].pos.Y = fdata[1];
             mesh->wbuf[widx].pos.Z = fdata[2];
         }
+
+        line = nextline + 1;
     }
+    *curline = line;
 }
 
 static int temp_md5model_verify(const struct temp_md5_model *model)
@@ -288,21 +306,22 @@ static void temp_md5model_kill(const struct temp_md5_model *model)
 
 int md5model_open(const char *fn, struct md5_model *mdl)
 {
-    char line[0x200];
-    FILE *f;
+    char *line;
+    char *nextline;
+    struct file f;
+    struct temp_md5_model model = {0};
     int version;
     int meshidx = 0;
     int ret = - 1;
-    struct temp_md5_model model = {0};
 
-    f = fopen(fn, "rb");
-    if (!f) {
-        printf("md5model_open: Can't open file %s\n", fn);
-        return ret;
-    }
+    if (openfile(&f, fn))
+        return -1;
 
-    while (!feof(f)) {
-        fgets(line, sizeof(line), f);
+    line = f.udata;
+    while (1) {
+        if (getnextline(&line, &nextline))
+            break;
+
         if (sscanf(line, " MD5Version %d", &version) == 1) {
             if (version != 10) {
                 printf("md5model_open: Bad MD5Version %d %s\n", version, fn);
@@ -325,7 +344,9 @@ int md5model_open(const char *fn, struct md5_model *mdl)
             for (int i = 0; i < model.jcount; ++i) {
                 struct md5_basejoint *bjoint = &model.base_skel[i];
                 struct md5_joint *joint = &bjoint->joint;
-                fgets(line, sizeof(line), f);
+                line = nextline + 1;
+                if (getnextline(&line, &nextline))
+                    break;
 
                 if (sscanf(line, "%64s %d ( %f %f %f ) ( %f %f %f )",
                             bjoint->name, &joint->parent, &joint->pos.X,
@@ -337,8 +358,10 @@ int md5model_open(const char *fn, struct md5_model *mdl)
             }
         }
         else if (strncmp(line, "mesh {", 6) == 0) {
-            md5model_mesh(f, line, &model, meshidx++);
+            md5model_mesh(&f, &nextline, &model, meshidx++);
         }
+
+        line = nextline+1;
     }
 
     if (!temp_md5model_verify(&model)) {
@@ -348,7 +371,7 @@ int md5model_open(const char *fn, struct md5_model *mdl)
 
     temp_md5model_kill(&model);
 closefile:
-    fclose(f);
+    closefile(&f);
     return ret;
 }
 
