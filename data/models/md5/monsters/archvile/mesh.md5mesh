@@ -87,7 +87,7 @@ joints {
 
 mesh {
 	// meshes: archvilemesh
-	shader "monsters/archvile"
+	shader "archvile"
 
 	numverts 1184
 	vert 0 ( 0.778603971 0.2543129921 ) 0 2

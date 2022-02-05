@@ -35,21 +35,6 @@ void cube_index_buffer_kill()
 {
     sg_destroy_buffer(cube_index_buffer);
 }
-extern sg_image imgdummy;
-
-inline static sg_image get_material(const char *fn)
-{
-    sg_image img = imgdummy;
-    if (!fn)
-        return img;
-
-    char tmp[0x1000];
-    snprintf(tmp, 0x1000, "data/materials/%s.qoi", fn);
-    printf("%s\n", tmp);
-
-    load_sg_image(tmp, &img);
-    return img;
-}
 
 struct vertex {
     hmm_vec3 pos;
@@ -140,17 +125,11 @@ static int parse_objvertex(struct obj_model *mdl, fastObjMesh *mesh)
     return 0;
 }
 
-static void parse_objmaterials(struct obj_model *mdl, fastObjMesh *mesh)
+inline static void parse_objmaterials(struct obj_model *mdl, fastObjMesh *mesh)
 {
-    sg_image imgs[3] = {
-        get_material(mesh->materials[0].map_Kd.name),
-        get_material(mesh->materials[0].map_Ks.name),
-        get_material(mesh->materials[0].map_bump.name),
-    };
-
-    mdl->imgdiff = imgs[0];
-    mdl->imgspec = imgs[1];
-    mdl->imgbump = imgs[2];
+    mdl->imgdiff = texloader_find(mesh->materials[0].map_Kd.name);
+    mdl->imgspec = texloader_find(mesh->materials[0].map_Ks.name);
+    mdl->imgbump = texloader_find(mesh->materials[0].map_bump.name);
 }
 
 int objmodel_open(const char *fn, struct obj_model *mdl)

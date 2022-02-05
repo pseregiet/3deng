@@ -9,4 +9,4 @@ Ks 0.010000 0.010000 0.010000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd people/trump/diffuse
+map_Kd trump/diff

@@ -45,56 +45,12 @@ void terrain_pipeline(struct pipelines *pipes)
 
 int init_terrain()
 {
-    const char *filesd[] = {
-        "terraintex/grass_mix_d.qoi",
-        "terraintex/desert_mud_d.qoi",
-        "terraintex/snow_mud_d.qoi",
-        "terraintex/ground_dry2_d.qoi",
-        "terraintex/mntn_dark_d.qoi",
-    };
-    const char *filess[] = {
-        "terraintex/grass_mix_s.qoi",
-        "terraintex/desert_mud_s.qoi",
-        "terraintex/snow_mud_s.qoi",
-        "terraintex/mntn_dark_s.qoi",
-        "terraintex/ground_dry2_s.qoi",
-    };
-    const char *filesn[] = {
-        "terraintex/grass_mix_n.qoi",
-        "terraintex/desert_mud_n.qoi",
-        "terraintex/snow_mud_n.qoi",
-        "terraintex/mntn_dark_n.qoi",
-        "terraintex/ground_dry2_n.qoi",
-    };
- /*   
-    const char *filesd[] = {
-        "terraintex/grass_02_01.png",
-        "terraintex/tile01.png",
-        "terraintex/grass_02_01.png",
-        "terraintex/field_04.png",
-        "terraintex/stone01_01.png"
-    };
-   */ 
+    sg_image imgd = texloader_find("terrain/diff");
+    sg_image imgs = texloader_find("terrain/spec");
+    sg_image imgn = texloader_find("terrain/norm");
 
-    sg_image imgd;
-    sg_image imgs;
-    sg_image imgn;
-    //sg_image imgb;
-
-    if (load_sg_image_array(filesd, &imgd, 5)) {
-        fatalerror("can't load terrain textures\n");
+    if (!imgd.id || !imgs.id || !imgn.id)
         return -1;
-    }
-
-    if (load_sg_image_array(filess, &imgs, 5)) {
-        fatalerror("can't load terrain textures\n");
-        return -1;
-    }
-
-    if (load_sg_image_array(filesn, &imgn, 5)) {
-        fatalerror("can't load terrain textures\n");
-        return -1;
-    }
 
     if (worldmap_init(&fi.map, "metin2_map_battlefied"))
         return -1;

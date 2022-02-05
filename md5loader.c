@@ -187,8 +187,6 @@ struct md5_model *md5loader_find(const char *name)
 
 int md5loader_init()
 {
-    const int ms = sizeof(struct md5_model);
-    const int as = sizeof(struct md5_anim);
     assert(!growing_alloc_init(&models.names, 0, 1));
     assert(!growing_alloc_init(&animations.names, 0, 1));
     return md5models_json();

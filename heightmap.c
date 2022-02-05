@@ -190,18 +190,6 @@ freepixels:
 
 static int load_blendmap(struct worldmap *map, const char *fn)
 {
-    const char *files[] = {
-        "metin2_map_battlefied/alpha_1.qoi", 
-        "metin2_map_battlefied/alpha_2.qoi", 
-        "metin2_map_battlefied/alpha_3.qoi", 
-        "metin2_map_battlefied/alpha_4.qoi", 
-    };
-
-    if (load_sg_image_array(files, &map->blendmap, 4)) {
-        printf("can't load alpha maps\n");
-        return -1;
-    }
-
     return 0;
 }
 
@@ -218,7 +206,8 @@ int worldmap_init(struct worldmap *map, const char *fn)
     if (load_map(fn, w, h, map))
         return -1;
 
-    if (load_blendmap(map, fn))
+    map->blendmap = texloader_find("worldmap/alpha");
+    if (!map->blendmap.id)
         return -1;
 
     return 0;

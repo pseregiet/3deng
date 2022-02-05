@@ -28,6 +28,7 @@
 #include "objloader.h"
 #include "animatmapobj.h"
 #include "staticmapobj.h"
+#include "texloader.h"
 #include "genshd_combo.h"
 #include "sdl2_imgui.h"
 
@@ -429,6 +430,7 @@ int main(int argc, char **argv)
     }
 
     assert(!imgdummy_init());
+    assert(!texloader_init());
     assert(!pipelines_init(&fi.pipes));
     assert(!init_terrain());
     assert(!shadowmap_init());
@@ -525,6 +527,7 @@ int main(int argc, char **argv)
     shadowmap_kill();
     //kill_terrain();
     pipelines_kill(&fi.pipes);
+    texloader_kill();
     imgdummy_kill();
     
 

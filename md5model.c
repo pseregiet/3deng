@@ -201,17 +201,17 @@ static void calc_weightmap(const struct temp_md5_model *model, struct md5_model 
 extern sg_image imgdummy;
 static void make_shader(struct md5_mesh *mesh, char *shader)
 {
-    char fn[0x1000];
     mesh->imgd = imgdummy;
     mesh->imgs = imgdummy;
     mesh->imgn = imgdummy;
 
-    snprintf(fn, 0x1000, "data/materials/%s/diff.qoi", shader);
-    load_sg_image(fn, &mesh->imgd);
-    snprintf(fn, 0x1000, "data/materials/%s/spec.qoi", shader);
-    load_sg_image(fn, &mesh->imgs);
-    snprintf(fn, 0x1000, "data/materials/%s/norm.qoi", shader);
-    load_sg_image(fn, &mesh->imgn);
+    char tmp[0x1000];
+    snprintf(tmp, 0x1000, "%s/diff", shader);
+    mesh->imgd = texloader_find(tmp);
+    snprintf(tmp, 0x1000, "%s/spec", shader);
+    mesh->imgs = texloader_find(tmp);
+    snprintf(tmp, 0x1000, "%s/norm", shader);
+    mesh->imgn = texloader_find(tmp);
 }
 
 static void md5model_make(const struct temp_md5_model *model, struct md5_model *mdl)
