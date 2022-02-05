@@ -429,6 +429,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    uint32_t init_start = SDL_GetTicks();
     assert(!imgdummy_init());
     assert(!texloader_init());
     assert(!pipelines_init(&fi.pipes));
@@ -504,6 +505,9 @@ int main(int argc, char **argv)
             HMM_Vec3(0.0f, 0.0f, 0.0f),
             HMM_Vec4(0.0f, 0.0f, 0.0f, 0.0f),
             HMM_Vec3(10.0f, 10.0f, 10.0f));
+
+    double init_done = (double)(SDL_GetTicks() - init_start);
+    printf("%.3fs init\n", init_done / 1000.0f);
 
     uint64_t now = SDL_GetPerformanceCounter();
     uint64_t last = 0;

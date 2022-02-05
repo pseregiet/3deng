@@ -25,7 +25,7 @@ static sg_pipeline shadow_create_pipeline(int stride, bool cullfront, bool ibuf)
     int cull = cullfront ? SG_CULLMODE_FRONT : SG_CULLMODE_BACK;
     int imode = ibuf ? SG_INDEXTYPE_UINT16 : SG_INDEXTYPE_NONE;
 
-    sg_pipeline pipe = sg_make_pipeline(&(sg_pipeline_desc){
+    return sg_make_pipeline(&(sg_pipeline_desc){
         .shader = fi.shadow.shd,
         .layout = {
             .buffers[ATTR_vs_depth_apos] = {.stride = stride }, //8 * sizeof(float) },
@@ -134,7 +134,6 @@ void shadowmap_draw()
         animodel_shadow_render(am, &fi, obj->matrix);
     }
     }
-
 
     sg_end_pass();
 }

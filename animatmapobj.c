@@ -16,7 +16,7 @@ static int append_object(const char *model, hmm_vec3 pos,
                                 hmm_vec3 scl, hmm_vec4 rot)
 {
     struct animatmapobj awo;
-    if (!animodel_init(&awo.am, model))
+    if (animodel_init(&awo.am, model))
         return -1;
 
     awo.matrix = calc_matrix(pos, rot, scl);
@@ -89,8 +89,10 @@ static int parse_json()
             }
         }
 
-        if (append_object(model, pos, scl, rot))
+        if (append_object(model, pos, scl, rot)) {
+            printf("append_object %s failed\n", model);
             goto freejson;
+        }
     }
 
     ret = 0;

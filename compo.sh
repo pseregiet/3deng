@@ -12,7 +12,7 @@ OPTS="\
     -I./3rdparty/klib \
     -I./3rdparty/sokol \
     -I./3rdparty/qoi \
-    -g\
+    -g \
 "
 
 LIBS="\

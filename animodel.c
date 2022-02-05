@@ -6,8 +6,10 @@ static int lmao = 0;
 int animodel_init(struct animodel *am, const char *modelname)
 {
     struct md5_model *mdl = md5loader_find(modelname);
-    if (!mdl)
+    if (!mdl) {
+        printf("mdl %s not found\n", modelname);
         return -1;
+    }
 
     am->model = mdl;
     am->interp = (struct md5_joint *)calloc(mdl->jcount, sizeof(*am->interp));
@@ -17,6 +19,8 @@ int animodel_init(struct animodel *am, const char *modelname)
     am->pause = false;
     am->lasttime = 0.0f;
     am->bonebuf = 0;
+
+    return 0;
 }
 
 void animodel_kill(struct animodel *am)
