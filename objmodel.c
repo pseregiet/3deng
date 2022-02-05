@@ -43,7 +43,11 @@ inline static sg_image get_material(const char *fn)
     if (!fn)
         return img;
 
-    load_sg_image(fn, &img);
+    char tmp[0x1000];
+    snprintf(tmp, 0x1000, "data/materials/%s.qoi", fn);
+    printf("%s\n", tmp);
+
+    load_sg_image(tmp, &img);
     return img;
 }
 
@@ -139,9 +143,9 @@ static int parse_objvertex(struct obj_model *mdl, fastObjMesh *mesh)
 static void parse_objmaterials(struct obj_model *mdl, fastObjMesh *mesh)
 {
     sg_image imgs[3] = {
-        get_material(mesh->materials[0].map_Kd.path),
-        get_material(mesh->materials[0].map_Ks.path),
-        get_material(mesh->materials[0].map_bump.path),
+        get_material(mesh->materials[0].map_Kd.name),
+        get_material(mesh->materials[0].map_Ks.name),
+        get_material(mesh->materials[0].map_bump.name),
     };
 
     mdl->imgdiff = imgs[0];

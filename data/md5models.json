@@ -1,0 +1,10 @@
+{
+"md5models":[
+    {
+        "model": "monsters/archvile",
+        "anims": [
+            "monsters/archvile/attack1"
+        ]
+    }
+]
+}

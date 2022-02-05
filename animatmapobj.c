@@ -26,7 +26,7 @@ static int append_object(const char *model, hmm_vec3 pos,
 
 static int parse_json()
 {
-    const char *fn = "world_animated_objects.json";
+    const char *fn = "data/world_animated_objects.json";
     struct file jf;
     int ret = -1;
     if (openfile(&jf, fn))

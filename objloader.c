@@ -50,7 +50,7 @@ static int load_model(const char *model)
         return -1;
 
     char fp[0x1000];
-    snprintf(fp, 0x1000, "obj/models/%s.obj", model);
+    snprintf(fp, 0x1000, "data/models/obj/%s/mesh.obj", model);
     khint_t idx = kh_get(modelmap, &models.map, model);
 
     if (idx != kh_end(&models.map)) {
@@ -63,7 +63,7 @@ static int load_model(const char *model)
 
 static int parse_json()
 {
-    const char *fn = "objmodels.json";
+    const char *fn = "data/objmodels.json";
     struct file jf;
     int ret = -1;
     if (openfile(&jf, fn))

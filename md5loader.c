@@ -72,7 +72,7 @@ static int load_model_anims(const char* model, const char **animfps, int ac)
         return -1;
 
     char fp[0x1000];
-    snprintf(fp, 0x1000, "md5/models/%s.md5mesh", model);
+    snprintf(fp, 0x1000, "data/models/md5/%s/mesh.md5mesh", model);
     khint_t idx = kh_get(modelmap, &models.map, model);
 
     if (idx != kh_end(&models.map)) {
@@ -92,7 +92,7 @@ static int load_model_anims(const char* model, const char **animfps, int ac)
             continue;
         }
 
-        snprintf(fp, 0x1000, "md5/models/%s.md5anim", animfps[i]);
+        snprintf(fp, 0x1000, "data/models/md5/%s.md5anim", animfps[i]);
         anims[i].i = animation_append(fp, animfps[i]);
         if (anims[i].i == kh_end(&animations.map))
             return -1;
@@ -121,7 +121,7 @@ static void fixup_animations_pointers() {
 }
 
 static int md5models_json() {
-    const char *fn = "md5models.json";
+    const char *fn = "data/md5models.json";
     struct file jf;
     int ret = -1;
     if (openfile(&jf, fn))
