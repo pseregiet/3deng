@@ -436,6 +436,9 @@ static void imgdummy_kill()
 
 int main(int argc, char **argv)
 {
+#ifdef GIT_HASH
+    printf("Welcome to 3deng. Git: %s\n", GIT_HASH);
+#endif
     if (sdl_init()) {
         fatalerror("sdl_init() failed\n");
         return -1;
