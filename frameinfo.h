@@ -1,8 +1,7 @@
 #ifndef __frameinfo_h
 #define __frameinfo_h
 
-#define SOKOL_NO_SOKOL_APP
-#include "../sokol/sokol_gfx.h"
+#include "sokolgl.h"
 #include "heightmap.h"
 #include "pipelines.h"
 #include "camera.h"

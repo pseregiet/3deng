@@ -4,4 +4,4 @@
 #define SOKOL_IMGUI_NO_SOKOL_APP
 #include "../cimgui/cimgui.h"
 #define SOKOL_IMGUI_IMPL
-#include "../sokol/util/sokol_imgui.h"
+#include "sokol_imgui.h"

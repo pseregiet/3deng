@@ -5,7 +5,7 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "../cimgui/cimgui.h"
 #define SOKOL_IMGUI_NO_SOKOL_APP
-#include "../sokol/util/sokol_imgui.h"
+#include "sokol_imgui.h"
 
 #include <SDL2/SDL.h>
 #include <stdint.h>

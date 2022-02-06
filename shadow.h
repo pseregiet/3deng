@@ -1,8 +1,7 @@
 #ifndef __shadow_h
 #define __shadow_h
 
-#define SOKOL_NO_SOKOL_APP
-#include "../sokol/sokol_gfx.h"
+#include "sokolgl.h"
 #include "hmm.h"
 
 void shadowmap_draw();

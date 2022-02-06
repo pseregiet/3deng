@@ -1,8 +1,7 @@
 #ifndef __pipelines_h
 #define __pipelines_h
 
-#define SOKOL_NO_SOKOL_APP
-#include "../sokol/sokol_gfx.h"
+#include "sokolgl.h"
 
 struct pipelines {
     sg_pipeline simpleobj_hitbox;
