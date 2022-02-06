@@ -40,7 +40,7 @@ static int parse_json()
 
     cJSON *root = cJSON_GetObjectItem(json, "world_animated_objects");
     if (!root || root->type != cJSON_Array) {
-        printf("%s: no world_animated_objects array found\n");
+        printf("no world_animated_objects array found\n");
         goto freejson;
     }
 
@@ -105,7 +105,6 @@ freebuf:
 
 int animatmapobj_mngr_init()
 {
-    const int awosize = sizeof(struct animatmapobj);
     kv_init(awos.objs);
     kv_resize(struct animatmapobj, awos.objs, AWOS_DEF_COUNT);
 

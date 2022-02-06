@@ -115,7 +115,6 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
     char path[0x1000];
     struct file f;
     int stride = 131;
-    int bindex = 0;
     int ret = -1;
 
     for (int y = 0; y < h; ++y) {

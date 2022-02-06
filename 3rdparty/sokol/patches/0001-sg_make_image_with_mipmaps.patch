@@ -1,14 +1,14 @@
-From c2514a240e8f7aedac1d0238355eaecee2a5880f Mon Sep 17 00:00:00 2001
+From 959772fd84d6d03bac531bf8ac61de7cbc7de6d8 Mon Sep 17 00:00:00 2001
 From: pseregiet <patryk.seregiet@gmail.com>
 Date: Fri, 31 Dec 2021 00:43:31 +0100
 Subject: [PATCH 1/2] sg_make_image_with_mipmaps
 
 ---
- sokol_gfx.h | 97 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 97 insertions(+)
+ sokol_gfx.h | 96 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 96 insertions(+)
 
 diff --git a/sokol_gfx.h b/sokol_gfx.h
-index 3b48447..edf88b1 100644
+index 3b48447..cf61442 100644
 --- a/sokol_gfx.h
 +++ b/sokol_gfx.h
 @@ -2427,6 +2427,7 @@ SOKOL_GFX_API_DECL void sg_pop_debug_group(void);
@@ -19,7 +19,7 @@ index 3b48447..edf88b1 100644
  SOKOL_GFX_API_DECL sg_shader sg_make_shader(const sg_shader_desc* desc);
  SOKOL_GFX_API_DECL sg_pipeline sg_make_pipeline(const sg_pipeline_desc* desc);
  SOKOL_GFX_API_DECL sg_pass sg_make_pass(const sg_pass_desc* desc);
-@@ -15494,6 +15495,102 @@ SOKOL_API_IMPL sg_image sg_make_image(const sg_image_desc* desc) {
+@@ -15494,6 +15495,101 @@ SOKOL_API_IMPL sg_image sg_make_image(const sg_image_desc* desc) {
      return img_id;
  }
  
@@ -87,7 +87,6 @@ index 3b48447..edf88b1 100644
 +                {
 +                    for (int y = 0; y < target_height; ++y)
 +                    {
-+                        uint16_t colors[8] = { 0 };
 +                        for (int chanell = 0; chanell < pixel_size; ++chanell)
 +                        {
 +                            int color = 0;

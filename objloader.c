@@ -54,7 +54,7 @@ static int load_model(const char *model)
     khint_t idx = kh_get(modelmap, &models.map, model);
 
     if (idx != kh_end(&models.map)) {
-        printf("Model %s already exists, skip\n");
+        printf("Model %s already exists, skip\n", model);
         return 0;
     }
 
@@ -77,7 +77,7 @@ static int parse_json()
 
     cJSON *root = cJSON_GetObjectItem(json, "objmodels");
     if (!root || root->type != cJSON_Array) {
-        printf("%s: no objmodels array found\n");
+        printf("no objmodels array found\n");
         goto freejson;
     }
 
@@ -114,7 +114,6 @@ struct obj_model *objloader_find(const char *name)
 
 int objloader_init()
 {
-    const int ms = sizeof(struct obj_model);
     assert(!growing_alloc_init(&models.names, 0, 1));
     kv_init(models.models);
     kv_resize(struct obj_model, models.models, MODELS_DEF_COUNT);

@@ -41,7 +41,7 @@ static int parse_json()
 
     cJSON *root = cJSON_GetObjectItem(json, "world_static_objects");
     if (!root || root->type != cJSON_Array) {
-        printf("%s: no world_static_objects array found\n");
+        printf("no world_static_objects array found\n");
         goto freejson;
     }
 
@@ -111,7 +111,6 @@ void staticmapobj_setpos(struct staticmapobj *obj, hmm_vec3 pos)
 
 int staticmapobj_mngr_init()
 {
-    const int swosize = sizeof(struct staticmapobj);
     kv_init(swos.objs);
     kv_resize(struct staticmapobj, swos.objs, SWOS_DEF_COUNT);
 

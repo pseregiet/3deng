@@ -662,7 +662,7 @@ const char* parse_vertex(fastObjData* data, const char* ptr)
 static
 const char* parse_texcoord(fastObjData* data, const char* ptr)
 {
-    unsigned int ii;
+    //unsigned int ii;
     float        v;
 
 /*

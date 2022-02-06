@@ -3,8 +3,8 @@
 #include <stdint.h>
 
 struct file {
-    uint8_t *udata;
-    uint8_t *pdata;
+    char *udata;
+    char *pdata;
     int usize;
     int psize;
     int pos;

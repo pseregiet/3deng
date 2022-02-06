@@ -6,8 +6,9 @@
 extern struct sdlobjs sdl;
 extern struct frameinfo fi;
 
-static const char *igsdl2_GetClipboardText(void *)
+static const char *igsdl2_GetClipboardText(void *arg)
 {
+    (void)arg;
     if (sdl.clipboard)
         SDL_free(sdl.clipboard);
 
@@ -15,8 +16,9 @@ static const char *igsdl2_GetClipboardText(void *)
     return sdl.clipboard;
 }
 
-static void igsdl2_SetClipboardText(void *, const char *text)
+static void igsdl2_SetClipboardText(void *arg, const char *text)
 {
+    (void)arg;
     SDL_SetClipboardText(text);
 }
 
@@ -63,7 +65,7 @@ bool igsdl2_ProcessEvent(SDL_Event *e)
 
 void igsdl2_Init(void)
 {
-    simgui_desc_t simgui_desc = {};
+    simgui_desc_t simgui_desc = {0};
     simgui_setup(&simgui_desc);
 
     ImGuiIO *io = igGetIO();

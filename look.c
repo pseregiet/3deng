@@ -181,7 +181,6 @@ static void imgui_static_objs()
 static void do_imgui_frame(int w, int h, double delta)
 {
     simgui_new_frame(w, h, delta);
-    static float f = 0.0f;
 
     igBegin("Hello world! window", NULL, 0);
 
@@ -234,10 +233,10 @@ static void do_update_animated(double delta)
 
 static void do_update(double delta)
 {
-    static float rottt = 0.0f;
     do_update_animated(delta / 1000.f);
     //rotate static objects...very fucking static, lol
     /*
+    static float rottt = 0.0f;
     for (int i = 0; i < static_objs.count; ++i) {
         static_objs.data[i].matrix = HMM_MultiplyMat4(static_objs.data[i].matrix,
                 (HMM_Rotate(HMM_ToRadians(rottt), HMM_Vec3(1.0f, 1.0f, 1.0f))));

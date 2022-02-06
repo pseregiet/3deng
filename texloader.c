@@ -127,7 +127,7 @@ static int texture_append(struct texture *tex)
 {
     khint_t idx = kh_get(texmap, &textures.map, tex->name);
     if (idx != kh_end(&textures.map)) {
-        printf("Texture %s already exists, skip\n");
+        printf("Texture %s already exists, skip\n", tex->name);
         return 0;
     }
 
@@ -163,7 +163,7 @@ static int texloader_json() {
 
     cJSON *root = cJSON_GetObjectItem(json, "textures");
     if (!root || root->type != cJSON_Array) {
-        printf("%s: no textures array found\n");
+        printf("no textures array found\n");
         goto freejson;
     }
 
@@ -177,7 +177,7 @@ static int texloader_json() {
         cJSON *jmips = cJSON_GetObjectItem(tex, "mips");
 
         if (!jname || !jname->valuestring || !jfiles || jfiles->type != cJSON_Array) {
-            printf("%s: node %s is bad\n", fn, texcount);
+            printf("%s: node %d is bad\n", fn, texcount);
             goto freejson;
         }
 

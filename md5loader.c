@@ -76,7 +76,7 @@ static int load_model_anims(const char* model, const char **animfps, int ac)
     khint_t idx = kh_get(modelmap, &models.map, model);
 
     if (idx != kh_end(&models.map)) {
-        printf("Model %s already exists, skip\n");
+        printf("Model %s already exists, skip\n", model);
         return 0;
     }
 
@@ -135,7 +135,7 @@ static int md5models_json() {
 
     cJSON *root = cJSON_GetObjectItem(json, "md5models");
     if (!root || root->type != cJSON_Array) {
-        printf("%s: no md5models array found\n");
+        printf("no md5models array found\n");
         goto freejson;
     }
 

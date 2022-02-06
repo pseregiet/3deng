@@ -65,6 +65,7 @@ int shadowmap_init()
     fi.shadow.pip = shadow_create_pipeline((8 * sizeof(float)), false, false);
     fi.shadow.tpip = shadow_create_pipeline((11 * sizeof(float)), true, true);
     fi.shadow.act = (sg_pass_action){
+        0
         //.colors[0] = { .action = SG_ACTION_CLEAR, .value = {1.0f, 1.0f, 1.0f, 1.0f } },
     };
     fi.shadow.pass = sg_make_pass(&(sg_pass_desc) {

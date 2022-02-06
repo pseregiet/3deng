@@ -13,6 +13,8 @@ OPTS="\
     -I./3rdparty/sokol \
     -I./3rdparty/qoi \
     -I./3rdparty/glad \
+    -Wno-missing-braces \
+    -Wall \
     -g \
 "
 
@@ -50,7 +52,6 @@ FILE="\
     pipelines.c \
     sdl2_imgui.c \
     shadow.c \
-    simple_list.c \
     sokol_gfx.c \
     sokol_imgui.c \
     staticmapobj.c \

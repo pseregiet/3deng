@@ -69,7 +69,7 @@ hmm_vec3 quat_rotat(hmm_quat q, hmm_vec3 in)
 
 hmm_mat4 extrahmm_transpose_inverse_mat3(hmm_mat4 A)
 {
-    hmm_mat4 out;
+    hmm_mat4 out = A;
 
     double determinant =    +A.Elements[0][0]*(A.Elements[1][1]*A.Elements[2][2]-A.Elements[2][1]*A.Elements[1][2])
                             -A.Elements[0][1]*(A.Elements[1][0]*A.Elements[2][2]-A.Elements[1][2]*A.Elements[2][0])
