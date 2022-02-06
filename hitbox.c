@@ -1,5 +1,4 @@
-#define SOKOL_NO_SOKOL_APP
-#include "../sokol/sokol_gfx.h"
+#include "sokolgl.h"
 #include "hmm.h"
 #include "objmodel.h"
 #include "genshd_hitboxcube.h"

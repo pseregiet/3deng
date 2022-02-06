@@ -1,8 +1,7 @@
 #ifndef __sdl2_imgui_h
 #define __sdl2_imgui_h
 
-#define SOKOL_NO_SOKOL_APP
-#include "../sokol/sokol_gfx.h"
+#include "sokolgl.h"
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include "../cimgui/cimgui.h"
 #define SOKOL_IMGUI_NO_SOKOL_APP

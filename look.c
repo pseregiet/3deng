@@ -2,11 +2,7 @@
 //  super fucking amazing openGL3.3 engine
 //  super quallity shit code by Patryk Seregiet (c) 2021-2022
 //------------------------------------------------------------------------------
-#define SOKOL_NO_SOKOL_APP
-#include "../sokol/sokol_gfx.h"
-
-#include <assert.h>
-#include <GL/gl.h>
+#include "sokolgl.h"
 #include <SDL2/SDL.h>
 #include "hmm.h"
 
@@ -14,6 +10,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "sdl2_stuff.h"
 #include "frameinfo.h"
@@ -98,6 +95,10 @@ static int sdl_init()
     if (!sdl.ctx) {
         fatalerror("SDL_GL_CreateContext failed: %s\n", SDL_GetError());
         return -1;
+    }
+
+    if (!gladLoadGLLoader(SDL_GL_GetProcAddress)) {
+        fatalerror("gladLoadGLLoader failed\n");
     }
 
     sg_setup(&(sg_desc) {0});

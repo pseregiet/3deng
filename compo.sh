@@ -12,18 +12,20 @@ OPTS="\
     -I./3rdparty/klib \
     -I./3rdparty/sokol \
     -I./3rdparty/qoi \
+    -I./3rdparty/glad \
     -g \
 "
 
 LIBS="\
-    -lcimgui
-    -L../cimgui/
+    -lcimgui \
+    -L../cimgui/ \
     -lSDL2 \
     -lm \
-    -lGL \
+    -ldl \
 "
 
 FILE="\
+    3rdparty/glad/glad.c \
     3rdparty/cJSON/cJSON.c \
     qoi.c \
     animatmapobj.c \

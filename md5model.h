@@ -1,8 +1,7 @@
 #ifndef __md5model_h
 #define __md5model_h
 #include "extrahmm.h"
-#define SOKOL_NO_SOKOL_APP
-#include "../sokol/sokol_gfx.h"
+#include "sokolgl.h"
 
 #define MD5_MAX_MESHES 4
 

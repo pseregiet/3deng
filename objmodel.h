@@ -1,7 +1,6 @@
 #ifndef __objmodel_h
 #define __objmodel_h
-#define SOKOL_NO_SOKOL_APP
-#include "../sokol/sokol_gfx.h"
+#include "sokolgl.h"
 #include "pipelines.h"
 
 struct obj_model {
