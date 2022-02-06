@@ -72,6 +72,16 @@ hmm_vec4 lightspos[4] = {
     {0.0f, 0.0f, -3.0f, 1.0f}
 };
 
+static void sdl_video_driver()
+{
+    const char *vd = SDL_GetCurrentVideoDriver();
+    printf("SDL Video driver: %s\n", vd);
+
+    if (!strncmp(vd, "x11", 3))
+        fi.vd = VD_X11;
+    else if (!strncmp(vd, "wayland", 7))
+        fi.vd = VD_WAYLAND;
+}
 static int sdl_init()
 {
     if (SDL_Init(SDL_INIT_EVERYTHING)) {
@@ -100,6 +110,8 @@ static int sdl_init()
     if (!gladLoadGLLoader(SDL_GL_GetProcAddress)) {
         fatalerror("gladLoadGLLoader failed\n");
     }
+
+    sdl_video_driver();
 
     sg_setup(&(sg_desc) {0});
     if (!sg_isvalid()) {

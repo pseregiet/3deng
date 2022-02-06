@@ -8,6 +8,14 @@
 #include "camera.h"
 #include <stdbool.h>
 
+enum videodriver {
+    VD_NONE,
+    VD_X11,
+    VD_WAYLAND,
+    VD_WINDOWS,
+    VD_APPLE,
+};
+
 struct frameinfo {
     struct worldmap map;
     struct pipelines pipes;
@@ -36,6 +44,7 @@ struct frameinfo {
     hmm_vec3 dlight_ambi;
     hmm_vec3 dlight_spec;
     hmm_mat4 vp;
+    enum videodriver vd;
 };
 
 #endif

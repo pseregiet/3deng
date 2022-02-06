@@ -1,8 +1,10 @@
 #include "sdl2_imgui.h"
 #include "sdl2_stuff.h"
+#include "frameinfo.h"
 #include <float.h>
 
 extern struct sdlobjs sdl;
+extern struct frameinfo fi;
 
 static const char *igsdl2_GetClipboardText(void *)
 {
@@ -135,16 +137,18 @@ void igsdl2_UpdateMousePosAndButtons(void)
     sdl.mouse[1] = 0;
     sdl.mouse[2] = 0;
 
-    int wx, wy;
-    SDL_GetWindowPosition(sdl.win, &wx, &wy);
-    SDL_GetGlobalMouseState(&mx, &my);
-    mx -= wx;
-    my -= wy;
+    if (fi.vd != VD_WAYLAND) {
+        int wx, wy;
+        SDL_GetWindowPosition(sdl.win, &wx, &wy);
+        SDL_GetGlobalMouseState(&mx, &my);
+        mx -= wx;
+        my -= wy;
+    }
+
     io->MousePos = (ImVec2){(float)mx, (float)my};
 
     bool anymouse = igIsAnyMouseDown();
     SDL_CaptureMouse(anymouse);
-
 }
 
 void igsdl2_UpdateMouseCursor(void)
