@@ -6,7 +6,7 @@
 static int lmao = 0;
 int animodel_init(struct animodel *am, const char *modelname)
 {
-    struct md5_model *mdl = md5loader_find(modelname);
+    const struct md5_model *mdl = md5loader_find(modelname);
     if (!mdl) {
         printf("mdl %s not found\n", modelname);
         return -1;
@@ -86,11 +86,21 @@ void animodel_joint2matrix(struct animodel *am)
     am->bonebuf = 0;
 }
 
+void animodel_fraguniforms(struct frameinfo *fi)
+{
+    fs_md5_t unifs = {
+        .uambi = fi->dlight_ambi,
+        .udiff = fi->dlight_diff,
+        .uspec = fi->dlight_spec,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_vs_md5, &SG_RANGE(unifs));
+}
+
 void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
 {
-    struct md5_model *mdl = am->model;
+    const struct md5_model *mdl = am->model;
     for (int i = 0; i < mdl->mcount; ++i) {
-        struct md5_mesh *mesh = &mdl->meshes[i];
+        const struct md5_mesh *mesh = &mdl->meshes[i];
 
         sg_bindings bind = {
             .vertex_buffers[0] = mesh->vbuf,
@@ -123,14 +133,8 @@ void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
         };
         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5, &SG_RANGE(univs));
 
-        fs_md5_t unifs = {
-            .uambi = fi->dlight_ambi,
-            .udiff = fi->dlight_diff,
-            .uspec = fi->dlight_spec,
-        };
-        sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_vs_md5, &SG_RANGE(unifs));
 
-        sg_draw(0, mesh->icount*3, 1);
+        sg_draw(mesh->ioffset, mesh->icount, 1);
     }
 }
 
@@ -205,9 +209,9 @@ void animodel_shadow_pipeline(struct pipelines *pipes)
 
 void animodel_shadow_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
 {
-    struct md5_model *mdl = am->model;
+    const struct md5_model *mdl = am->model;
     for (int i = 0; i < mdl->mcount; ++i) {
-        struct md5_mesh *mesh = &mdl->meshes[i];
+        const struct md5_mesh *mesh = &mdl->meshes[i];
 
         sg_bindings bind = {
             .vertex_buffers[0] = mesh->vbuf,
@@ -233,6 +237,6 @@ void animodel_shadow_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 
             },
         };
         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5_depth, &SG_RANGE(univs));
-        sg_draw(0, mesh->icount*3, 1);
+        sg_draw(mesh->ioffset, mesh->icount, 1);
     }
 }

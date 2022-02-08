@@ -35,9 +35,11 @@ struct md5_mesh {
     sg_image  imgs;
     sg_image  imgn;
     int vcount;
-    int icount;
-    int wcount;
     int woffset;
+    uint16_t icount;
+    uint16_t ioffset;
+    int16_t wcount;
+    int16_t pad1;
 };
 
 struct md5_anim {
@@ -49,15 +51,17 @@ struct md5_anim {
 };
 
 struct md5_model {
+    sg_buffer bigvbuf;
+    sg_buffer bigibuf;
     struct md5_mesh meshes[MD5_MAX_MESHES];
     struct md5_anim **anims;
     hmm_mat4 *invmatrices;
     sg_image weightmap;
-    int mcount;
-    int jcount;
-    int acount;
-    int weightw;
-    int weighth;
+    int16_t mcount;
+    int16_t jcount;
+    int16_t acount;
+    int16_t weightw;
+    int16_t weighth;
 };
 
 int md5model_open(const char *fn, struct md5_model *mdl);

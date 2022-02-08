@@ -37,7 +37,7 @@ inline static char *addname(struct growing_alloc *alloc, const char *name)
 
 static struct md5_model *model_append(const char *fp, const char *name)
 {
-    struct md5_model mdl;
+    struct md5_model mdl = {0};
     if (md5model_open(fp, &mdl))
         return 0;
 

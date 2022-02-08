@@ -212,7 +212,11 @@ static void calc_weightmap(const struct temp_md5_model *model, struct md5_model 
             woffset++;
         }
     }
-    make_sg_image_16f(buf, totalwcount, &mdl->weightw, &mdl->weighth, &mdl->weightmap);
+    int w;
+    int h;
+    make_sg_image_16f(buf, totalwcount, &w, &h, &mdl->weightmap);
+    mdl->weightw = w;
+    mdl->weighth = h;
     free(buf);
 }
 
@@ -232,50 +236,42 @@ static void make_shader(struct md5_mesh *mesh, char *shader)
     mesh->imgn = texloader_find(tmp);
 }
 
+static void make_vbuf(struct md5vertex *vbuf, struct temp_md5_mesh *msrc,
+        struct md5_mesh *mdst, struct md5_basejoint *base)
+{
+    mdst->icount = msrc->tcount * 3;
+    mdst->wcount = msrc->wcount;
+    mdst->vcount = msrc->vcount;
+
+    for (int vi = 0; vi < msrc->vcount; ++vi) {
+        for (int w = 0; w < msrc->vbuf[vi].wcount; ++w) {
+            int wstart = msrc->vbuf[vi].wstart;
+            struct md5_weight *weight = &msrc->wbuf[wstart + w];
+            struct md5_joint *joint = &base[weight->joint].joint;
+
+            hmm_vec3 rot = quat_rotat(joint->orient, weight->pos);
+            hmm_vec3 new = HMM_MultiplyVec3f(
+                    HMM_AddVec3(joint->pos, rot), weight->bias);
+            vbuf[vi].pos = HMM_AddVec3(vbuf[vi].pos, new);
+        }
+        vbuf[vi].uv = msrc->vbuf[vi].uv;
+        vbuf[vi].weight[0] = msrc->vbuf[vi].wstart;
+        vbuf[vi].weight[1] = msrc->vbuf[vi].wcount;
+    }
+    md5model_normals(vbuf, msrc->tbuf, msrc->vcount, msrc->tcount);
+}
+
 static void md5model_make(const struct temp_md5_model *model, struct md5_model *mdl)
 {
     const int vertsize = sizeof(struct md5vertex);
     const int indesize = sizeof(uint16_t);
 
+    int totalvert = 0;
+    int totalinde = 0;
     for (int i = 0; i < model->mcount; ++i) {
         struct temp_md5_mesh *mesh = &model->meshes[i];
-        struct md5vertex *vbuf = (struct md5vertex *)calloc(mesh->vcount, vertsize);
-        uint16_t *ibuf = (uint16_t *)mesh->tbuf;
-
-        mdl->meshes[i].icount = mesh->tcount;
-        mdl->meshes[i].wcount = mesh->wcount;
-        mdl->meshes[i].vcount = mesh->vcount;
-
-        for (int vi = 0; vi < mesh->vcount; ++vi) {
-            for (int w = 0; w < mesh->vbuf[vi].wcount; ++w) {
-                int wstart = mesh->vbuf[vi].wstart;
-                struct md5_weight *weight = &mesh->wbuf[wstart + w];
-                struct md5_joint *joint = &model->base_skel[weight->joint].joint;
-
-                hmm_vec3 rot = quat_rotat(joint->orient, weight->pos);
-                hmm_vec3 new = HMM_MultiplyVec3f(
-                        HMM_AddVec3(joint->pos, rot), weight->bias);
-                vbuf[vi].pos = HMM_AddVec3(vbuf[vi].pos, new);
-            }
-            vbuf[vi].uv = mesh->vbuf[vi].uv;
-            vbuf[vi].weight[0] = mesh->vbuf[vi].wstart;
-            vbuf[vi].weight[1] = mesh->vbuf[vi].wcount;
-        }
-        md5model_normals(vbuf, mesh->tbuf, mesh->vcount, mesh->tcount);
-
-        mdl->meshes[i].vbuf = sg_make_buffer(&(sg_buffer_desc) {
-            .data.size = mesh->vcount * vertsize,
-            .data.ptr = vbuf,
-        });
-
-        mdl->meshes[i].ibuf = sg_make_buffer(&(sg_buffer_desc) {
-            .data.size = mesh->tcount * 3 * indesize,
-            .data.ptr = ibuf,
-            .type = SG_BUFFERTYPE_INDEXBUFFER,
-        });
-
-        free(vbuf);
-
+        totalvert += mesh->vcount;
+        totalinde += mesh->tcount * 3;
         make_shader(&mdl->meshes[i], mesh->shader);
     }
 
@@ -283,6 +279,79 @@ static void md5model_make(const struct temp_md5_model *model, struct md5_model *
     calc_weightmap(model, mdl);
     mdl->mcount = model->mcount;
     mdl->jcount = model->jcount;
+
+    if (totalvert <= 0xFFFF) {
+        //if total vertex count fits in 16bit
+        //put all vertices in the same vbo
+        struct md5vertex *bigvbuf = (struct md5vertex *)calloc(vertsize, totalvert);
+        uint16_t *bigibuf = (uint16_t *)malloc(indesize * totalinde);
+
+        int vertoffset = 0;
+        int indeoffset = 0;
+        for (int i = 0; i < model->mcount; ++i) {
+            struct temp_md5_mesh *msrc = &model->meshes[i];
+            struct md5_mesh *mdst = &mdl->meshes[i];
+            struct md5vertex *vbuf = &bigvbuf[vertoffset];
+
+            make_vbuf(vbuf, msrc, mdst, model->base_skel);
+            //memcpy(&bigibuf[indeoffset], msrc->tbuf, mdst->icount * indesize);
+            for (int i = 0; i < msrc->tcount; ++i) {
+                uint16_t *ibuf = &bigibuf[indeoffset + (i*3)];
+                ibuf[0] = msrc->tbuf[i].index[0] + vertoffset;
+                ibuf[1] = msrc->tbuf[i].index[1] + vertoffset;
+                ibuf[2] = msrc->tbuf[i].index[2] + vertoffset;
+            }
+            mdst->ioffset = indeoffset;
+
+            vertoffset += mdst->vcount;
+            indeoffset += mdst->icount;
+        }
+
+        mdl->bigvbuf = sg_make_buffer(&(sg_buffer_desc) {
+            .data.size = vertsize * totalvert,
+            .data.ptr = bigvbuf,
+            .type = SG_BUFFERTYPE_VERTEXBUFFER,
+        });
+
+        mdl->bigibuf = sg_make_buffer(&(sg_buffer_desc) {
+            .data.size = indesize * totalinde,
+            .data.ptr = bigibuf,
+            .type = SG_BUFFERTYPE_INDEXBUFFER,
+        });
+
+        for (int i = 0; i < model->mcount; ++i) {
+            struct md5_mesh *mdst = &mdl->meshes[i];
+            mdst->vbuf = mdl->bigvbuf;
+            mdst->ibuf = mdl->bigibuf;
+        }
+
+        free(bigvbuf);
+        free(bigibuf);
+        return;
+    }
+
+    //make vertex buffer for each mesh
+
+    for (int i = 0; i < model->mcount; ++i) {
+        struct temp_md5_mesh *mesh = &model->meshes[i];
+        struct md5vertex *vbuf = (struct md5vertex *)calloc(mesh->vcount, vertsize);
+        make_vbuf(vbuf, mesh, &mdl->meshes[i], model->base_skel);
+
+        mdl->meshes[i].vbuf = sg_make_buffer(&(sg_buffer_desc) {
+            .data.size = mesh->vcount * vertsize,
+            .data.ptr = vbuf,
+            .type = SG_BUFFERTYPE_VERTEXBUFFER,
+        });
+
+        mdl->meshes[i].ibuf = sg_make_buffer(&(sg_buffer_desc) {
+            .data.size = mesh->tcount * 3 * indesize,
+            .data.ptr = mesh->tbuf,
+            .type = SG_BUFFERTYPE_INDEXBUFFER,
+        });
+
+        free(vbuf);
+    }
+
 }
 
 static void temp_md5model_kill(const struct temp_md5_model *model)
@@ -377,26 +446,28 @@ closefile:
 
 static void md5mesh_kill(struct md5_mesh *mesh)
 {
-    if (mesh->vbuf.id)
-        sg_destroy_buffer(mesh->vbuf);
-    if (mesh->ibuf.id)
-        sg_destroy_buffer(mesh->vbuf);
-    if (mesh->imgd.id)
-        sg_destroy_image(mesh->imgd);
-    if (mesh->imgs.id)
-        sg_destroy_image(mesh->imgs);
-    if (mesh->imgn.id)
-        sg_destroy_image(mesh->imgn);
+    sg_destroy_image(mesh->imgd);
+    sg_destroy_image(mesh->imgs);
+    sg_destroy_image(mesh->imgn);
 }
 
 void md5model_kill(struct md5_model *model)
 {
+    sg_destroy_image(model->weightmap);
+    if (model->bigvbuf.id) {
+        sg_destroy_buffer(model->bigvbuf);
+        sg_destroy_buffer(model->bigibuf);
+    } else {
+        for (int i = 0; i < model->mcount; ++i) {
+            struct md5_mesh *mesh = &model->meshes[i];
+            sg_destroy_buffer(mesh->vbuf);
+            sg_destroy_buffer(mesh->ibuf);
+        }
+    }
+
     for (int i = 0; i < model->mcount; ++i)
         md5mesh_kill(&model->meshes[i]);
 
     if (model->invmatrices)
         free(model->invmatrices);
-
-    if (model->weightmap.id)
-        sg_destroy_image(model->weightmap);
 }
