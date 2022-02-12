@@ -14,9 +14,9 @@ struct obj_model {
     sg_buffer ibuf;
     sg_image imgdiff;
     sg_image imgspec;
-    sg_image imgbump;
+    sg_image imgnorm;
     int vcount;
-    int tcount;
+    int icount;
 };
 
 void cube_index_buffer_init();

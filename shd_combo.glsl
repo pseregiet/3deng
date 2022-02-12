@@ -32,6 +32,7 @@ void main() {
 in vec3 fragpos;
 in vec3 normalo;
 in vec2 uv;
+in vec3 tang;
 
 out vec4 frag_color;
 

@@ -29,7 +29,7 @@ inline static char *addname(struct growing_alloc *alloc, const char *name)
 
 static int append_model(const char *fp, const char *name)
 {
-    struct obj_model mdl;
+    struct obj_model mdl = {0};
     if (objmodel_open(fp, &mdl)) {
         return -1;
     }
@@ -50,7 +50,7 @@ static int load_model(const char *model)
         return -1;
 
     char fp[0x1000];
-    snprintf(fp, 0x1000, "data/models/obj/%s/mesh.obj", model);
+    snprintf(fp, 0x1000, "data/models/obj/%s.3do", model);
     khint_t idx = kh_get(modelmap, &models.map, model);
 
     if (idx != kh_end(&models.map)) {
@@ -117,7 +117,7 @@ int objloader_init()
     assert(!growing_alloc_init(&models.names, 0, 1));
     kv_init(models.models);
     kv_resize(struct obj_model, models.models, MODELS_DEF_COUNT);
-    cube_index_buffer_init();
+    //cube_index_buffer_init();
     return parse_json();
 }
 
@@ -130,7 +130,7 @@ void objloader_kill()
             objmodel_kill(obj);
     }
     kv_destroy(models.models);
-    cube_index_buffer_kill();
+    //cube_index_buffer_kill();
 }
 
 int objloader_get(int idx, const char **name, const struct obj_model **mdl)

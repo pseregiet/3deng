@@ -1,15 +1,11 @@
 #!/bin/bash
 
-#sokol-shdc --input combo.glsl --output genshader.h --slang glsl330
-#gcc -g look.c stb_image.c sokol_gfx.c shaderloader.c event.c objloader.c fast_obj.c mouse2world.c sdl2_imgui.c sokol_imgui.c -lcimgui -L../cimgui/ -lSDL2 -lm -lGL && ./a.out
-
 GITH=\"$(git rev-parse HEAD)\"
 
 COMP="gcc"
 
 OPTS="\
     -I./3rdparty/cJSON \
-    -I./3rdparty/fast_obj \
     -I./3rdparty/hmm \
     -I./3rdparty/klib \
     -I./3rdparty/sokol \
@@ -39,7 +35,6 @@ FILE="\
     camera.c \
     event.c \
     extrahmm.c \
-    fast_obj.c \
     fileops.c \
     growing_allocator.c \
     heightmap.c \

@@ -1,161 +1,154 @@
-#include "objmodel.h"
-#include "texloader.h"
-#include "fast_obj.h"
-#include "hmm.h"
-#include "genshd_combo.h"
-#include <assert.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
+#include "objmodel.h"
+#include "fileops.h"
+#include "texloader.h"
+#include "extrahmm.h"
+#include "genshd_combo.h"
 
-static sg_buffer cube_index_buffer;
-void cube_index_buffer_init()
-{
-    uint16_t indices[36] = {
-        // front
-		0, 1, 2,   2, 3, 0,
-		// right
-		1, 5, 6,   6, 2, 1,
-		// back
-		7, 6, 5,   5, 4, 7,
-		// left
-		4, 0, 3,   3, 7, 4,
-		// bottom
-		4, 5, 1,   1, 0, 4,
-		// top
-		3, 2, 6,   6, 7, 3,
-    };
-
-    cube_index_buffer = sg_make_buffer(&(sg_buffer_desc) {
-        .data.size = sizeof(indices),
-        .data.ptr = indices,
-        .type = SG_BUFFERTYPE_INDEXBUFFER,
-    });
-}
-void cube_index_buffer_kill()
-{
-    sg_destroy_buffer(cube_index_buffer);
-}
+#define OBJ_MAGIC (0x1234567)
 
 struct vertex {
     hmm_vec3 pos;
-    hmm_vec3 norm;
+    hmm_vec3 nor;
+    hmm_vec2  uv;
+    hmm_vec3 tan;
+};
+
+struct invec {
+    hmm_vec3 pos;
+    hmm_vec3 nor;
     hmm_vec2 uv;
 };
 
-struct hitbox {
-    hmm_vec3 min;
-    hmm_vec3 max;
-};
-
-inline static void find_hitbox(hmm_vec3 pos, struct hitbox *hb)
+inline static uintptr_t align8(uintptr_t addr)
 {
-    if (pos.X < hb->min.X)
-        hb->min.X = pos.X;
-    if (pos.Y < hb->min.Y)
-        hb->min.Y = pos.Y;
-    if (pos.Z < hb->min.Z)
-        hb->min.Z = pos.Z;
-
-    if (pos.X > hb->max.X)
-        hb->max.X = pos.X;
-    if (pos.Y < hb->max.Y)
-        hb->max.Y = pos.Y;
-    if (pos.Z < hb->max.Z)
-        hb->max.Z = pos.Z;
+    int rest = addr & 7;
+    if (rest)
+        rest = 8 - rest;
+    return rest;
 }
 
-inline static void make_hitbox(struct obj_model *mdl, struct hitbox *hb)
+inline static uintptr_t align4(uintptr_t addr)
 {
-    const float cube_vertices[24] = {
-        // front
-        hb->max.X, hb->min.Y, hb->min.Z,
-        hb->max.X, hb->min.Y, hb->max.Z,
-        hb->min.X, hb->min.Y, hb->max.Z,
-        hb->min.X, hb->min.Y, hb->min.Z,
-        // back
-        hb->max.X, hb->max.Y, hb->min.Z,
-        hb->max.X, hb->max.Y, hb->max.Z,
-        hb->min.X, hb->max.Y, hb->max.Z,
-        hb->min.X, hb->max.Y, hb->min.Z,
-    };
-
-    mdl->hitbox_vbuf = sg_make_buffer(&(sg_buffer_desc) {
-        .data.size = sizeof(cube_vertices),
-        .data.ptr = cube_vertices,
-    });
-    mdl->hitbox_ibuf = cube_index_buffer;
+    int rest = addr & 3;
+    if (rest)
+        rest = 4 - rest;
+    return rest;
 }
 
-static int parse_objvertex(struct obj_model *mdl, fastObjMesh *mesh)
+static void calc_tangents(struct vertex *vbuf, uint16_t *ibuf, int indecount)
 {
-    const int fc = mesh->face_count;
-    const int vs = sizeof(struct vertex);
-    const int vc = fc * 3;
-    const int ds = vc * vs;
+    for (int i = 0; i < indecount; i +=3) {
+        uint16_t idx[3] = {ibuf[i+0], ibuf[i+1], ibuf[i+2]};
+        hmm_vec3 v0 = vbuf[idx[0]].pos;
+        hmm_vec3 v1 = vbuf[idx[1]].pos;
+        hmm_vec3 v2 = vbuf[idx[2]].pos;
 
-    struct vertex *vbuf = calloc(vc, vs);
-    assert(vbuf);
+        hmm_vec2 uv0 = vbuf[idx[0]].uv;
+        hmm_vec2 uv1 = vbuf[idx[1]].uv;
+        hmm_vec2 uv2 = vbuf[idx[2]].uv;
 
-    struct hitbox hb = {
-        .min = (hmm_vec3){-INFINITY, -INFINITY, -INFINITY},
-        .max = (hmm_vec3){INFINITY, INFINITY, INFINITY},
-    };
-
-    for (int i = 0; i < vc; ++i) {
-        fastObjIndex vert = mesh->indices[i];
-        int vpos = vert.p * 3;
-        int npos = vert.n * 3;
-        int tpos = vert.t * 2;
-
-        memcpy(&vbuf[i].pos,  &mesh->positions[vpos], sizeof(hmm_vec3));
-        memcpy(&vbuf[i].norm, &mesh->normals[npos],   sizeof(hmm_vec3));
-        memcpy(&vbuf[i].uv,   &mesh->texcoords[tpos], sizeof(hmm_vec2));
-
-        find_hitbox(vbuf[i].pos, &hb);
+        hmm_vec3 t0 = HMM_NormalizeVec3(
+                get_tangent(&v0, &v1, &v2, &uv0, &uv1, &uv2));
+        vbuf[idx[0]].tan = t0;
+        vbuf[idx[1]].tan = t0;
+        vbuf[idx[2]].tan = t0;
     }
-    make_hitbox(mdl, &hb);
-
-    mdl->vbuf = sg_make_buffer(&(sg_buffer_desc) {
-        .data.size = ds,
-        .data.ptr = (const void *)vbuf,
-    });
-
-    mdl->vcount = vc;
-    mdl->tcount = fc;
-    return 0;
 }
 
-inline static void parse_objmaterials(struct obj_model *mdl, fastObjMesh *mesh)
-{
-    mdl->imgdiff = texloader_find(mesh->materials[0].map_Kd.name);
-    mdl->imgspec = texloader_find(mesh->materials[0].map_Ks.name);
-    mdl->imgbump = texloader_find(mesh->materials[0].map_bump.name);
-}
+struct objheader {
+    uint32_t magic;
+    uint32_t vertcount;
+    uint32_t indecount;
+    uint32_t matlen;
+};
 
 int objmodel_open(const char *fn, struct obj_model *mdl)
 {
-    fastObjMesh *mesh = fast_obj_read(fn);
-    if (!mesh) {
-        printf("%s: fast_obj_read failed\n", fn);
+    struct file f;
+    if (openfile(&f, fn))
+        return -1;
+
+    struct objheader header;
+    if (f.usize < sizeof(header)) {
+        printf("%s obj model corrupted\n", fn);
+        closefile(&f);
         return -1;
     }
 
-    if (parse_objvertex(mdl, mesh))
-        return -1;
+    memcpy(&header, f.udata, sizeof(header));
+    header.matlen++;
+    int expectedsize = sizeof(header) +
+        (header.matlen + align4(header.matlen) +
+        (sizeof(struct invec) * header.vertcount) +
+        (sizeof(uint16_t) * header.indecount));
 
-    parse_objmaterials(mdl, mesh);
+    if (header.magic != OBJ_MAGIC || f.usize != expectedsize) {
+        printf("%s obj model corrupted\n", fn);
+        closefile(&f);
+        return -1;
+    }
+
+    char *matname = &f.udata[sizeof(header)];
+    matname[header.matlen] = 0;
+
+    char tmp[0x1000];
+    snprintf(tmp, 0x1000, "%s/diff", matname);
+    mdl->imgdiff = texloader_find(tmp);
+    snprintf(tmp, 0x1000, "%s/spec", matname);
+    mdl->imgspec = texloader_find(tmp);
+    snprintf(tmp, 0x1000, "%s/norm", matname);
+    mdl->imgnorm = texloader_find(tmp);
+
+    const int vbufsize = sizeof(struct vertex) * header.vertcount;
+    const int ibufsize = sizeof(uint16_t) * header.indecount;
+    struct vertex *vbuf = malloc(vbufsize);
+    uint16_t *ibuf = malloc(ibufsize);
+
+    const int voff = sizeof(header) + (header.matlen + align4(header.matlen));
+    const int ioff = voff + (sizeof(struct invec) * header.vertcount);
+
+    struct invec *vsrc = (struct invec *)&f.udata[voff];
+    uint16_t *isrc = (uint16_t *)&f.udata[ioff];
+
+    //TODO: right now im copying straight data to another buffer
+    //not sure if necessary. Might be good idea if I do multithread.
+    memcpy(ibuf, isrc, ibufsize);
+    for (int i = 0; i < header.vertcount; ++i) {
+        struct invec *vi = &vsrc[i];
+        struct vertex *vo = &vbuf[i];
+        memcpy(vo, vi, sizeof(*vi));
+    }
+
+    closefile(&f);
+    calc_tangents(vbuf, ibuf, header.indecount);
+
+    mdl->vbuf = sg_make_buffer(&(sg_buffer_desc) {
+        .data.size = vbufsize,
+        .data.ptr = vbuf,
+        .type = SG_BUFFERTYPE_VERTEXBUFFER,
+    });
+
+    mdl->ibuf = sg_make_buffer(&(sg_buffer_desc) {
+        .data.size = ibufsize,
+        .data.ptr = ibuf,
+        .type = SG_BUFFERTYPE_INDEXBUFFER,
+    });
+
+    mdl->vcount = header.vertcount;
+    mdl->icount = header.indecount;
+
+    free(vbuf);
+    free(ibuf);
+
     return 0;
 }
 
 void objmodel_kill(struct obj_model *mdl)
 {
-    sg_destroy_buffer(mdl->hitbox_vbuf);
     sg_destroy_buffer(mdl->vbuf);
     sg_destroy_buffer(mdl->ibuf);
-
-    sg_destroy_image(mdl->imgdiff);
-    sg_destroy_image(mdl->imgspec);
-    sg_destroy_image(mdl->imgbump);
 }
 
 void objmodel_pipeline(struct pipelines *pipes)
@@ -173,12 +166,19 @@ void objmodel_pipeline(struct pipelines *pipes)
                 .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
             },
         },
-        //.index_type = SG_INDEXTYPE_UINT16,
+        .index_type = SG_INDEXTYPE_UINT16,
         .layout = {
+            .buffers = {
+                [ATTR_vs_position] = {.stride = sizeof(float) * 11},
+                [ATTR_vs_normal] = {.stride = sizeof(float) * 11},
+                [ATTR_vs_texcoord] = {.stride = sizeof(float) * 11},
+            },
+
             .attrs = {
                 [ATTR_vs_position] = {.format = SG_VERTEXFORMAT_FLOAT3},
                 [ATTR_vs_normal] = {.format = SG_VERTEXFORMAT_FLOAT3},
                 [ATTR_vs_texcoord] = {.format = SG_VERTEXFORMAT_FLOAT2},
+                //[ATTR_vs_tang] = {.format = SG_VERTEXFORMAT_FLOAT3},
             },
         },
         .depth = {

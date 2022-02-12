@@ -1,5 +1,6 @@
 {
 "objmodels":[
-    {"model": "people/trump"}
+    {"model": "people/trump"},
+    {"model": "buildings/cottage"}
 ]
 }

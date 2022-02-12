@@ -62,7 +62,7 @@ int shadowmap_init()
 
 
     fi.shadow.shd = sg_make_shader(shddepth_shader_desc(SG_BACKEND_GLCORE33));
-    fi.shadow.pip = shadow_create_pipeline((8 * sizeof(float)), false, false);
+    fi.shadow.pip = shadow_create_pipeline((11 * sizeof(float)), false, true);
     fi.shadow.tpip = shadow_create_pipeline((11 * sizeof(float)), true, true);
     fi.shadow.act = (sg_pass_action){
         0
@@ -118,6 +118,7 @@ void shadowmap_draw()
         struct staticmapobj *obj = staticmapobj_get(i);
         const struct obj_model *mdl = obj->om;
         fi.shadow.mbind.vertex_buffers[0] = mdl->vbuf;
+        fi.shadow.mbind.index_buffer = mdl->ibuf;
         sg_apply_bindings(&fi.shadow.mbind);
         
         unis.model = HMM_MultiplyMat4(fi.shadow.lightspace, obj->matrix);

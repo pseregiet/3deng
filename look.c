@@ -308,6 +308,7 @@ static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_
         const struct obj_model *mdl = obj->om;
         sg_bindings bind = {
             .vertex_buffers[0] = mdl->vbuf,
+            .index_buffer = mdl->ibuf,
             .fs_images[SLOT_imgdiff] = mdl->imgdiff,
             .fs_images[SLOT_imgspec] = mdl->imgspec,
             //.fs_images[SLOT_imgnorm] = mdl->imgnorm,
@@ -316,7 +317,7 @@ static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_
         
         munis->model = obj->matrix;
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(*munis));
-        sg_draw(0, mdl->vcount, 1);
+        sg_draw(0, mdl->icount, 1);
     }
 
     if (m2.obj.om) {
@@ -324,6 +325,7 @@ static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_
         const struct obj_model *mdl = obj->om;
         sg_bindings bind = {
             .vertex_buffers[0] = mdl->vbuf,
+            .index_buffer = mdl->ibuf,
             .fs_images[SLOT_imgdiff] = mdl->imgdiff,
             .fs_images[SLOT_imgspec] = mdl->imgspec,
             //.fs_images[SLOT_imgnorm] = mdl->imgnorm,
@@ -332,7 +334,7 @@ static void do_render_static_objs(struct frameinfo *fi, double delta, vs_params_
         
         munis->model = obj->matrix;
         sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(*munis));
-        sg_draw(0, mdl->vcount, 1);
+        sg_draw(0, mdl->icount, 1);
     }
 
     simpleobj_hitbox_render(fi, munis->vp);

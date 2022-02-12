@@ -24,20 +24,20 @@
 
 
     {
-        "name": "trump/diff",
+        "name": "people/trump/diff",
         "files": ["people/trump/diff.qoi"],
         "min": "linear",
         "mag": "linear"
     },
     {
-        "name": "cottage/diff",
+        "name": "buildings/cottage/diff",
         "files": ["buildings/cottage/diff.qoi"],
         "min": "linear",
         "mag": "linear",
         "mips": true
     },
     {
-        "name": "cottage/norm",
+        "name": "buildings/cottage/norm",
         "files": ["buildings/cottage/norm.qoi"],
         "min": "linear",
         "mag": "linear",
