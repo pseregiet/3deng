@@ -102,6 +102,12 @@ freebuf:
     return ret;
 }
 
+void staticmapobj_new(struct staticmapobj *objsrc)
+{
+    struct staticmapobj obj = *objsrc;
+    kv_push(struct staticmapobj, swos.objs, obj);
+}
+
 void staticmapobj_setpos(struct staticmapobj *obj, hmm_vec3 pos)
 {
     obj->matrix.Elements[3][0] = pos.X;

@@ -188,3 +188,73 @@ void objmodel_pipeline(struct pipelines *pipes)
         .cull_mode = SG_CULLMODE_FRONT,
     });
 }
+
+static inline float bits2float(const bool *bits)
+{
+    uint32_t in = 0;
+
+    for (int i = 0; i < 32; ++i)
+        if (bits[i])
+            in |= (1 << i);
+
+    return (float)in;
+}
+
+void objmodel_fraguniforms(struct frameinfo *fi)
+{
+    fs_params_t fs_params = {
+        .viewpos = fi->cam.pos,
+        .matshine = 32.0f,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_params, &SG_RANGE(fs_params));
+
+    fs_dir_light_t fs_dir_light = {
+        .direction =    fi->dirlight.dir,
+        .ambient =      fi->dirlight.ambi,
+        .diffuse =      fi->dirlight.diff,
+        .specular =     fi->dirlight.spec,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_dir_light, &SG_RANGE(fs_dir_light));
+
+    fs_point_lights_t fs_point_lights;
+    fs_point_lights.enabled = bits2float((bool *)&fi->lightsenable);
+    for (int i = 0; i < 4; ++i) {
+        fs_point_lights.position[i] =       HMM_Vec4v(fi->pointlight[i].pos, 0.0f);
+        fs_point_lights.ambient[i] =        HMM_Vec4v(fi->pointlight[i].ambi, 0.0f);
+        fs_point_lights.diffuse[i] =        HMM_Vec4v(fi->pointlight[i].diff, 0.0f);
+        fs_point_lights.specular[i] =       HMM_Vec4v(fi->pointlight[i].spec, 0.0f);
+        fs_point_lights.attenuation[i] =    HMM_Vec4v(fi->pointlight[i].atte, 0.0f);
+    }
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_point_lights, &SG_RANGE(fs_point_lights));
+
+    fs_spot_light_t fs_spot_light = {
+        .position =     fi->cam.pos,
+        .direction =    fi->cam.front,
+        .cutoff =       fi->spotlight.cutoff, //HMM_COSF(HMM_ToRadians(12.5f)),
+        .outcutoff =    fi->spotlight.outcutoff, //HMM_COSF(HMM_ToRadians(15.0f)),
+        .attenuation =  fi->spotlight.atte,
+        .ambient =      fi->spotlight.ambi,
+        .diffuse =      fi->spotlight.diff,
+        .specular =     fi->spotlight.spec,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_spot_light, &SG_RANGE(fs_spot_light));
+}
+
+void objmodel_render(const struct obj_model *mdl, struct frameinfo *fi, hmm_mat4 model)
+{
+    sg_bindings bind = {
+        .vertex_buffers[0] = mdl->vbuf,
+        .index_buffer = mdl->ibuf,
+        .fs_images[SLOT_imgdiff] = mdl->imgdiff,
+        .fs_images[SLOT_imgspec] = mdl->imgspec,
+        //.fs_images[SLOT_imgnorm] = mdl->imgnorm,
+    };
+    sg_apply_bindings(&bind);
+
+    vs_params_t vsuni = {
+        .vp = fi->vp,
+        .model = model
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(vsuni));
+    sg_draw(0, mdl->icount, 1);
+}

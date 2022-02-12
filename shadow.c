@@ -14,9 +14,9 @@ static void calc_lightmatrix()
     float near = 0.01f;
     float far = 1200.0f;
     hmm_mat4 lightproject = HMM_Orthographic(-600.f, 600.f, -600.f, 600.0f, near, far);
-    hmm_vec3 shadowstart = HMM_MultiplyVec3f(fi.dlight_dir, -250.f);
+    hmm_vec3 shadowstart = HMM_MultiplyVec3f(fi.dirlight.dir, -250.f);
     shadowstart = HMM_AddVec3(shadowstart, fi.cam.pos);
-    hmm_mat4 lightview = HMM_LookAt(shadowstart, HMM_AddVec3(shadowstart, fi.dlight_dir), HMM_Vec3(0.0f, 1.0f, 0.0f));
+    hmm_mat4 lightview = HMM_LookAt(shadowstart, HMM_AddVec3(shadowstart, fi.dirlight.dir), HMM_Vec3(0.0f, 1.0f, 0.0f));
     fi.shadow.lightspace = HMM_MultiplyMat4(lightproject, lightview);
 }
 

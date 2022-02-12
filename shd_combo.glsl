@@ -14,13 +14,11 @@ out vec2 uv;
 
 uniform vs_params {
     mat4 model;
-    //mat4 view;
-    //mat4 projection;
     mat4 vp;
 };
 
 void main() {
-   gl_Position = vp * model * vec4(position, 1.0); //projection * view * model * vec4(position, 1.0);
+   gl_Position = vp * model * vec4(position, 1.0);
    fragpos = vec3(model * vec4(position, 1.0));
    mat3 normalmat = transpose(inverse(mat3(model)));
    normalo = normalmat * normal;

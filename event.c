@@ -7,6 +7,7 @@
 #include "frameinfo.h"
 #include "sdl2_stuff.h"
 #include "sdl2_imgui.h"
+#include "worldedit.h"
 
 enum keys {
     KEYW,
@@ -95,6 +96,9 @@ void do_input(double delta)
         }
 
         if (sdl.imguifocus == 1) {
+            if (worldedit_input(&e))
+                continue;
+
             igsdl2_ProcessEvent(&e);
             continue;
         }

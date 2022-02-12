@@ -2,5 +2,5 @@ Source: https://github.com/attractivechaos/klib
 License: MIT
 Commit used: 9a063b33efd841fcc42d4b9f68cb78bb528bf75b
 Changes:
- * only khash.h, kvec.h, README.md, LICENSE files taken
+ * only khash.h, kvec.h, README.md, LICENSE.txt files taken
  * 1 patch on top; look in 'patches' dir

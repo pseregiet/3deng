@@ -15,4 +15,5 @@ int staticmapobj_mngr_init();
 void staticmapobj_mngr_kill();
 int staticmapobj_mngr_end();
 struct staticmapobj *staticmapobj_get(int idx);
+void staticmapobj_new(struct staticmapobj *objsrc);
 #endif

@@ -84,15 +84,15 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
     vs_params_t munis = {
         .vp = vp,
         .lightpos = lightpos,
-        .lightpos_s = fi->dlight_dir,
+        .lightpos_s = fi->dirlight.dir,
         .viewpos = viewpos,
         .lightspace_matrix = lightmatrix,
     };
 
     fs_params_t fsparm = {
-        .uambi = fi->dlight_ambi,
-        .udiff = fi->dlight_diff,
-        .uspec = fi->dlight_spec,
+        .uambi = fi->dirlight.ambi,
+        .udiff = fi->dirlight.diff,
+        .uspec = fi->dirlight.spec,
         .shadowmap_size = HMM_Vec2(2048.0f, 2048.0f),
     };
 

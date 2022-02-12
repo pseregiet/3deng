@@ -89,9 +89,9 @@ void animodel_joint2matrix(struct animodel *am)
 void animodel_fraguniforms(struct frameinfo *fi)
 {
     fs_md5_t unifs = {
-        .uambi = fi->dlight_ambi,
-        .udiff = fi->dlight_diff,
-        .uspec = fi->dlight_spec,
+        .uambi = fi->dirlight.ambi,
+        .udiff = fi->dirlight.diff,
+        .uspec = fi->dirlight.spec,
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_vs_md5, &SG_RANGE(unifs));
 }
@@ -128,7 +128,7 @@ void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
                 mdl->weightw,
                 mdl->weighth,
             },
-            .ulightpos = fi->dlight_dir,
+            .ulightpos = fi->dirlight.dir,
             .uviewpos = fi->cam.pos,
         };
         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5, &SG_RANGE(univs));

@@ -45,6 +45,7 @@ FILE="\
     md5loader.c \
     md5model.c \
     mouse2world.c \
+    worldedit.c \
     objloader.c \
     objmodel.c \
     pipelines.c \
