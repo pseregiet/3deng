@@ -40,7 +40,7 @@ inline static uintptr_t align4(uintptr_t addr)
 static void calc_tangents(struct vertex *vbuf, uint16_t *ibuf, int indecount)
 {
     for (int i = 0; i < indecount; i +=3) {
-        uint16_t idx[3] = {ibuf[i+0], ibuf[i+1], ibuf[i+2]};
+        const uint16_t idx[3] = {ibuf[i+0], ibuf[i+1], ibuf[i+2]};
         hmm_vec3 v0 = vbuf[idx[0]].pos;
         hmm_vec3 v1 = vbuf[idx[1]].pos;
         hmm_vec3 v2 = vbuf[idx[2]].pos;
@@ -153,7 +153,7 @@ void objmodel_kill(struct obj_model *mdl)
 
 void objmodel_pipeline(struct pipelines *pipes)
 {
-    pipes->objmodel_shd = sg_make_shader(comboshader_shader_desc(SG_BACKEND_GLCORE33));
+    pipes->objmodel_shd = sg_make_shader(shdobj_shader_desc(SG_BACKEND_GLCORE33));
     
     pipes->objmodel = sg_make_pipeline(&(sg_pipeline_desc) {
         .shader = pipes->objmodel_shd,
@@ -168,17 +168,19 @@ void objmodel_pipeline(struct pipelines *pipes)
         },
         .index_type = SG_INDEXTYPE_UINT16,
         .layout = {
+            /*
             .buffers = {
-                [ATTR_vs_position] = {.stride = sizeof(float) * 11},
-                [ATTR_vs_normal] = {.stride = sizeof(float) * 11},
-                [ATTR_vs_texcoord] = {.stride = sizeof(float) * 11},
+                [ATTR_vs_obj_apos] = {.stride = sizeof(float) * 11},
+                [ATTR_vs_obj_anorm] = {.stride = sizeof(float) * 11},
+                [ATTR_vs_obj_auv] = {.stride = sizeof(float) * 11},
             },
+            */
 
             .attrs = {
-                [ATTR_vs_position] = {.format = SG_VERTEXFORMAT_FLOAT3},
-                [ATTR_vs_normal] = {.format = SG_VERTEXFORMAT_FLOAT3},
-                [ATTR_vs_texcoord] = {.format = SG_VERTEXFORMAT_FLOAT2},
-                //[ATTR_vs_tang] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_obj_apos]  = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_obj_anorm] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_obj_auv]   = {.format = SG_VERTEXFORMAT_FLOAT2},
+                [ATTR_vs_obj_atang] = {.format = SG_VERTEXFORMAT_FLOAT3},
             },
         },
         .depth = {
@@ -200,61 +202,81 @@ static inline float bits2float(const bool *bits)
     return (float)in;
 }
 
-void objmodel_fraguniforms(struct frameinfo *fi)
+inline static void objmodel_fraguniforms_fast(float shine)
 {
-    fs_params_t fs_params = {
-        .viewpos = fi->cam.pos,
-        .matshine = 32.0f,
-    };
-    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_params, &SG_RANGE(fs_params));
 
-    fs_dir_light_t fs_dir_light = {
-        .direction =    fi->dirlight.dir,
-        .ambient =      fi->dirlight.ambi,
-        .diffuse =      fi->dirlight.diff,
-        .specular =     fi->dirlight.spec,
+    fs_obj_fast_t fs_fast = {
+        .umatshine = shine
     };
-    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_dir_light, &SG_RANGE(fs_dir_light));
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_obj_fast, &SG_RANGE(fs_fast));
 
-    fs_point_lights_t fs_point_lights;
-    fs_point_lights.enabled = bits2float((bool *)&fi->lightsenable);
+}
+
+void objmodel_fraguniforms_slow(struct frameinfo *fi)
+{
+    fs_obj_dirlight_t fs_dirlight = {
+        .ambi    =   fi->dirlight.ambi,
+        .diff    =   fi->dirlight.diff,
+        .spec    =   fi->dirlight.spec,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_obj_dirlight, &SG_RANGE(fs_dirlight));
+
+    fs_obj_pointlights_t fs_pointlights;
+    fs_pointlights.enabled = bits2float((bool *)&fi->lightsenable);
     for (int i = 0; i < 4; ++i) {
-        fs_point_lights.position[i] =       HMM_Vec4v(fi->pointlight[i].pos, 0.0f);
-        fs_point_lights.ambient[i] =        HMM_Vec4v(fi->pointlight[i].ambi, 0.0f);
-        fs_point_lights.diffuse[i] =        HMM_Vec4v(fi->pointlight[i].diff, 0.0f);
-        fs_point_lights.specular[i] =       HMM_Vec4v(fi->pointlight[i].spec, 0.0f);
-        fs_point_lights.attenuation[i] =    HMM_Vec4v(fi->pointlight[i].atte, 0.0f);
+        fs_pointlights.ambi[i] =    HMM_Vec4v(fi->pointlight[i].ambi, 0.0f);
+        fs_pointlights.diff[i] =    HMM_Vec4v(fi->pointlight[i].diff, 0.0f);
+        fs_pointlights.spec[i] =    HMM_Vec4v(fi->pointlight[i].spec, 0.0f);
+        fs_pointlights.atte[i] =    HMM_Vec4v(fi->pointlight[i].atte, 0.0f);
     }
-    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_point_lights, &SG_RANGE(fs_point_lights));
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_obj_pointlights, &SG_RANGE(fs_pointlights));
 
-    fs_spot_light_t fs_spot_light = {
-        .position =     fi->cam.pos,
-        .direction =    fi->cam.front,
+    fs_obj_spotlight_t fs_spotlight = {
         .cutoff =       fi->spotlight.cutoff, //HMM_COSF(HMM_ToRadians(12.5f)),
         .outcutoff =    fi->spotlight.outcutoff, //HMM_COSF(HMM_ToRadians(15.0f)),
-        .attenuation =  fi->spotlight.atte,
-        .ambient =      fi->spotlight.ambi,
-        .diffuse =      fi->spotlight.diff,
-        .specular =     fi->spotlight.spec,
+        .atte =         fi->spotlight.atte,
+        .ambi =         fi->spotlight.ambi,
+        .diff =         fi->spotlight.diff,
+        .spec =         fi->spotlight.spec,
     };
-    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_spot_light, &SG_RANGE(fs_spot_light));
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_obj_spotlight, &SG_RANGE(fs_spotlight));
+}
+
+void objmodel_vertuniforms_slow(struct frameinfo *fi)
+{
+    vs_obj_slow_t vs = {
+        .uvp           = fi->vp,
+        .uviewpos      = fi->cam.pos,
+        .usptlight_pos = fi->cam.pos,
+        .usptlight_dir = fi->cam.front,
+        .udirlight_dir = fi->dirlight.dir,
+    };
+    for (int i = 0; i < 4; ++i)
+        vs.upntlight_pos[i] = HMM_Vec4v(fi->pointlight[i].pos, 0.0f);
+
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_obj_slow, &SG_RANGE(vs));
+}
+
+inline static void objmodel_vertuniforms_fast(hmm_mat4 model)
+{
+    vs_obj_fast_t vs = {
+        .umodel = model
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_obj_fast, &SG_RANGE(vs));
 }
 
 void objmodel_render(const struct obj_model *mdl, struct frameinfo *fi, hmm_mat4 model)
 {
+    objmodel_vertuniforms_fast(model);
+    objmodel_fraguniforms_fast(32.0f);
+
     sg_bindings bind = {
         .vertex_buffers[0] = mdl->vbuf,
         .index_buffer = mdl->ibuf,
         .fs_images[SLOT_imgdiff] = mdl->imgdiff,
         .fs_images[SLOT_imgspec] = mdl->imgspec,
-        //.fs_images[SLOT_imgnorm] = mdl->imgnorm,
+        .fs_images[SLOT_imgnorm] = mdl->imgnorm,
     };
     sg_apply_bindings(&bind);
-
-    vs_params_t vsuni = {
-        .vp = fi->vp,
-        .model = model
-    };
-    sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(vsuni));
     sg_draw(0, mdl->icount, 1);
 }

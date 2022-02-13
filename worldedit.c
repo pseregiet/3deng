@@ -30,6 +30,12 @@ struct worldedit {
 } wedata = {0};
 
 #define PRINTVEC3(vec) vec.X, vec.Y, vec.Z
+
+static float clamp(float min, float d, float max) {
+  const double t = d < min ? min : d;
+  return t > max ? max : t;
+}
+
 static void gui_pick_staticobj()
 {
     igBegin("Static objects", NULL, 0);
@@ -82,7 +88,8 @@ static void render_staticobj()
     fi.dirlight.diff = wedata.ambi_flash;
 
     sg_apply_pipeline(fi.pipes.objmodel);
-    objmodel_fraguniforms(&fi);
+    objmodel_fraguniforms_slow(&fi);
+    objmodel_vertuniforms_slow(&fi);
     const struct staticmapobj *obj = &wedata.m2.obj;
     objmodel_render(obj->om, &fi, obj->matrix);
 
@@ -104,10 +111,15 @@ void worldedit_render()
 void worldedit_update(double delta)
 {
     wedata.flash_time += delta;
-    if (wedata.flash_time >= 1.0f)
-        wedata.flash_time = 0.0f;
+    if (wedata.flash_time >= 1.f)
+        wedata.flash_time = 0.f;
 
-    wedata.ambi_flash = HMM_MultiplyVec3f(fi.dirlight.ambi, wedata.flash_time);
+    const float pi = 3.14;
+    const float frequency = 1; // Frequency in Hz
+    float val = 0.5*(1+sin(2 * pi * frequency * wedata.flash_time));
+    val = clamp(0.2, val, 0.8);
+
+    wedata.ambi_flash = (hmm_vec3){val,val,val};
 
     if (wedata.mode == EM_PLACE_STATIC)
         update_pick_staticobj();

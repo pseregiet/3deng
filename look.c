@@ -166,10 +166,17 @@ static void do_imgui_frame(int w, int h, double delta)
     igColorEdit3("directional light diffuse", fi.dirlight.diff.Elements, ImGuiColorEditFlags_DefaultOptions_);
     igColorEdit3("directional light ambient", fi.dirlight.ambi.Elements, ImGuiColorEditFlags_DefaultOptions_);
 
-    igCheckbox("Light enable1", &fi.lightsenable[0]);
-    igCheckbox("Light enable2", &fi.lightsenable[1]);
-    igCheckbox("Light enable3", &fi.lightsenable[2]);
-    igCheckbox("Light enable4", &fi.lightsenable[3]);
+    if (igCheckbox("Light enable1", &fi.lightsenable[0]))
+        fi.pointlight[0].pos = fi.cam.pos;
+
+    if (igCheckbox("Light enable2", &fi.lightsenable[1]))
+        fi.pointlight[1].pos = fi.cam.pos;
+
+    if (igCheckbox("Light enable3", &fi.lightsenable[2]))
+        fi.pointlight[2].pos = fi.cam.pos;
+
+    if (igCheckbox("Light enable4", &fi.lightsenable[3]))
+        fi.pointlight[3].pos = fi.cam.pos;
 
     if (igButton("Set lightdir", (ImVec2) {100.0f, 30.0f})) {
         fi.dirlight.dir = fi.cam.front;
@@ -221,7 +228,8 @@ static void do_update(double delta)
 static void do_render_static_objs(struct frameinfo *fi, double delta)
 {
     sg_apply_pipeline(fi->pipes.objmodel);
-    objmodel_fraguniforms(fi);
+    objmodel_fraguniforms_slow(fi);
+    objmodel_vertuniforms_slow(fi);
 
     const int end = staticmapobj_mngr_end();
     for (int i = 0; i < end; ++i) {

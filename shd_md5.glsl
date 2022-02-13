@@ -88,7 +88,6 @@ in vec2 auv;
 in vec2 aweight;
 
 out INTERFACE {
-    vec3 normal;
     vec3 tang_viewpos;
     vec3 tang_lightpos;
     vec3 tang_fragpos;
@@ -131,13 +130,11 @@ void main() {
     gl_Position = uvp * vec4(ssfragpos, 1.0);
     
     inter.uv = auv;
-    inter.normal = anorm;
 }
 @end
 
 @fs fs_md5
 in INTERFACE {
-    vec3 normal;
     vec3 tang_viewpos;
     vec3 tang_lightpos;
     vec3 tang_fragpos;
