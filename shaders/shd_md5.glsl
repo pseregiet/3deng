@@ -3,6 +3,9 @@
 @ctype vec4 hmm_vec4
 @ctype mat4 hmm_mat4
 
+@include shd_include_lighting.glsl
+#define NR_POINT_LIGHTS 4
+
 @block bone_functions
 void get_mat4_from_texture(in sampler2D map, in ivec4 boneuv, in int index, out mat4 mat) {
     ivec2 pos = ivec2(boneuv.x + index, boneuv.y);
@@ -68,14 +71,15 @@ void main() {}
 @program shdmd5_depth vs_md5_depth fs_md5_depth
 
 @vs vs_md5
-uniform vs_md5 {
-    mat4 uvp;
+uniform vs_md5_fast {
     mat4 umodel;
     ivec4 uboneuv;
     ivec4 uweightuv;
-    vec3 ulightpos;
-    vec3 uviewpos;
-    float udummy;
+};
+
+uniform vs_md5_slow {
+    mat4 uvp;
+@include_block lighting_vs_uniforms
 };
 
 uniform sampler2D bonemap;
@@ -88,9 +92,7 @@ in vec2 auv;
 in vec2 aweight;
 
 out INTERFACE {
-    vec3 tang_viewpos;
-    vec3 tang_lightpos;
-    vec3 tang_fragpos;
+@include_block lighting_tang_interface
     vec2 uv;
 } inter;
 
@@ -123,9 +125,14 @@ void main() {
     vec3 ssfragpos = vec3(xmodel * vec4(apos,1.0));
     mat3 TBN = transpose(mat3(T, B, N));
 
-    inter.tang_lightpos = TBN * ulightpos;
-    inter.tang_viewpos = TBN * uviewpos;
     inter.tang_fragpos = TBN * ssfragpos;
+    inter.tang_viewpos = TBN * uviewpos;
+    inter.tang_dirlight_dir  = TBN * udirlight_dir;
+    inter.tang_sptlight_dir  = TBN * usptlight_dir;
+    inter.tang_sptlight_pos  = TBN * usptlight_pos;
+    for (int i = 0; i < NR_POINT_LIGHTS; ++i) {
+        inter.tang_pntlight_pos[i] = vec4(TBN * vec3(upntlight_pos[i]), 0.0);
+    }
 
     gl_Position = uvp * vec4(ssfragpos, 1.0);
     
@@ -134,18 +141,31 @@ void main() {
 @end
 
 @fs fs_md5
+#define NR_POINT_LIGHTS 4
 in INTERFACE {
-    vec3 tang_viewpos;
-    vec3 tang_lightpos;
-    vec3 tang_fragpos;
+@include_block lighting_tang_interface
     vec2 uv;
 } inter;
 
-uniform fs_md5 {
-    vec3 uambi;
-    vec3 udiff;
-    vec3 uspec;
+uniform fs_md5_fast {
+    float umatshine;
 };
+
+uniform fs_md5_dirlight {
+@include_block lighting_fs_dirlight_uniforms
+} udir_light;
+
+
+uniform fs_md5_pointlights {
+@include_block lighting_fs_pointlight_uniforms
+} upoint_lights;
+
+uniform fs_md5_spotlight {
+@include_block lighting_fs_spotlight_uniforms
+} uspot_light;
+
+@include_block lighting_structures
+@include_block lighting_functions
 
 uniform sampler2D imgdiff;
 uniform sampler2D imgspec;
@@ -154,24 +174,37 @@ uniform sampler2D imgnorm;
 out vec4 frag;
 
 void main() {
-    vec3 pixdiff = texture(imgdiff, inter.uv).rgb;
-    vec3 pixspec = texture(imgspec, inter.uv).rgb;
-    vec3 pixnorm = texture(imgnorm, inter.uv).rgb;
+    vec3 pixdiff = vec3(texture(imgdiff, inter.uv).xyz);
+    vec3 pixspec = vec3(texture(imgspec, inter.uv).xyz);
+    vec3 pixnorm = vec3(texture(imgnorm, inter.uv).xyz);
 
-    pixnorm = normalize(pixnorm * 2.0 - 1.0);
-    vec3 ambient = uambi * pixdiff;
-    vec3 lightdir = normalize(-inter.tang_lightpos);
-    float diff = max(dot(pixnorm, lightdir), 0.0);
-    vec3 diffuse = diff * udiff;
-
+    //properties
+    vec3 norm = normalize(pixnorm * 2.0 - 1.0);
     vec3 viewdir = normalize(inter.tang_viewpos - inter.tang_fragpos);
-    vec3 reflectdir = reflect(-lightdir, pixnorm);
-    float spec = pow(max(dot(pixnorm, reflectdir), 0.0), 32.0);
 
-    vec3 specular = pixspec * spec * uspec;
+    lightdata_t lightdata = lightdata_t(
+            pixdiff,
+            pixspec,
+            norm,
+            inter.tang_fragpos,
+            viewdir,
+            umatshine
+    );
 
-    vec3 light = (ambient + (diffuse + specular)) * pixdiff;
-    frag = vec4(light, 1.0);
+    //phase 1: directional lighting
+    vec3 result = calc_dir_light(get_directional_light(), lightdata);
+    
+    //phase 2: point lights
+    int enb = int(upoint_lights.enabled);
+    for (int i = 0; i < NR_POINT_LIGHTS; ++i) {
+        if ((enb & (1 << i)) != 0)
+            result += calc_point_light(get_point_light(i), lightdata);
+    }
+
+    //phase 3: spot light
+    result += calc_spot_light(get_spot_light(), lightdata);
+
+    frag = vec4(result, 1.0);
 }
 @end
 

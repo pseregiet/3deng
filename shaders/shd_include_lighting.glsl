@@ -1,107 +1,24 @@
-@ctype vec2 hmm_vec2
-@ctype vec3 hmm_vec3
-@ctype vec4 hmm_vec4
-@ctype mat4 hmm_mat4
 
-@vs vs_obj
+@block lighting_tang_interface
 #define NR_POINT_LIGHTS 4
-in vec3 apos;
-in vec3 anorm;
-in vec2 auv;
-in vec3 atang;
-
-out INTERFACE {
     vec3 tang_fragpos;
     vec3 tang_viewpos;
     vec3 tang_dirlight_dir;
     vec3 tang_sptlight_dir;
     vec3 tang_sptlight_pos;
-    vec4 tang_pntlight_pos[4];
-    vec2 uv;
-} inter;
+    vec4 tang_pntlight_pos[NR_POINT_LIGHTS];
+@end
 
-uniform vs_obj_slow {
-    mat4 uvp;
+@block lighting_vs_uniforms
+#define NR_POINT_LIGHTS 4
     vec4 upntlight_pos[NR_POINT_LIGHTS];
     vec3 uviewpos;
     vec3 udirlight_dir;
     vec3 usptlight_dir;
     vec3 usptlight_pos;
-};
-
-uniform vs_obj_fast {
-    mat4 umodel;
-};
-
-void main() {
-
-    mat3 normalmat = transpose(inverse(mat3(umodel)));
-    
-    vec3 T = normalize(normalmat * atang);
-    vec3 N = normalize(normalmat * anorm);
-    T = normalize(T - dot(T, N) * N);
-    vec3 B = cross(N, T);
-
-    vec3 ssfragpos = vec3(umodel * vec4(apos, 1.0));
-    mat3 TBN = transpose(mat3(T,B,N));
-
-    inter.tang_fragpos       = TBN * ssfragpos;
-    inter.tang_viewpos       = TBN * uviewpos;
-    inter.tang_dirlight_dir  = TBN * udirlight_dir;
-    inter.tang_sptlight_dir  = TBN * usptlight_dir;
-    inter.tang_sptlight_pos  = TBN * usptlight_pos;
-    for (int i = 0; i < NR_POINT_LIGHTS; ++i) {
-        inter.tang_pntlight_pos[i] = vec4(TBN * vec3(upntlight_pos[i]), 0.0);
-    }
-
-    inter.uv = auv;
-
-    gl_Position = uvp * vec4(ssfragpos, 1.0);
-}
 @end
 
-@fs fs_obj
-#define NR_POINT_LIGHTS 4
-in INTERFACE {
-    vec3 tang_fragpos;
-    vec3 tang_viewpos;
-    vec3 tang_dirlight_dir;
-    vec3 tang_sptlight_dir;
-    vec3 tang_sptlight_pos;
-    vec4 tang_pntlight_pos[4];
-    vec2 uv;
-} inter;
-
-out vec4 frag;
-
-uniform fs_obj_fast {
-    float umatshine;
-};
-
-uniform fs_obj_dirlight {
-    vec3 ambi;
-    vec3 diff;
-    vec3 spec;
-} udir_light;
-
-
-uniform fs_obj_pointlights {
-    vec4 ambi[NR_POINT_LIGHTS];
-    vec4 diff[NR_POINT_LIGHTS];
-    vec4 spec[NR_POINT_LIGHTS];
-    vec4 atte[NR_POINT_LIGHTS];
-    float enabled;
-} upoint_lights;
-
-uniform fs_obj_spotlight {
-    vec3 atte;
-    float cutoff;
-    vec3 ambi;
-    float outcutoff;
-    vec3 diff;
-    vec3 spec;
-} uspot_light;
-
+@block lighting_structures
 struct dir_light_t {
     vec3 dir;
     vec3 ambi;
@@ -140,52 +57,32 @@ struct lightdata_t {
     vec3 viewdir;
     float matshine;
 };
+@end
 
-dir_light_t get_directional_light();
-point_light_t get_point_light(const int index);
-spot_light_t  get_spot_light();
+@block lighting_fs_dirlight_uniforms
+    vec3 ambi;
+    vec3 diff;
+    vec3 spec;
+@end
 
-vec3 calc_dir_light(const dir_light_t light, const lightdata_t lightdata);
-vec3 calc_point_light(const point_light_t light, const lightdata_t lightdata);
-vec3 calc_spot_light(const spot_light_t light, const lightdata_t lightdata);
+@block lighting_fs_pointlight_uniforms
+    vec4 ambi[NR_POINT_LIGHTS];
+    vec4 diff[NR_POINT_LIGHTS];
+    vec4 spec[NR_POINT_LIGHTS];
+    vec4 atte[NR_POINT_LIGHTS];
+    float enabled;
+@end
 
-uniform sampler2D imgdiff;
-uniform sampler2D imgspec;
-uniform sampler2D imgnorm;
-void main() {
-    vec3 pixdiff = vec3(texture(imgdiff, inter.uv).xyz);
-    vec3 pixspec = vec3(texture(imgspec, inter.uv).xyz);
-    vec3 pixnorm = vec3(texture(imgnorm, inter.uv).xyz);
+@block lighting_fs_spotlight_uniforms
+    vec3 atte;
+    float cutoff;
+    vec3 ambi;
+    float outcutoff;
+    vec3 diff;
+    vec3 spec;
+@end
 
-    //properties
-    vec3 norm = normalize(pixnorm * 2.0 - 1.0);
-    vec3 viewdir = normalize(inter.tang_viewpos - inter.tang_fragpos);
-
-    lightdata_t lightdata = lightdata_t(
-            pixdiff,
-            pixspec,
-            norm,
-            inter.tang_fragpos,
-            viewdir,
-            umatshine
-    );
-
-    //phase 1: directional lighting
-    vec3 result = calc_dir_light(get_directional_light(), lightdata);
-    
-    //phase 2: point lights
-    int enb = int(upoint_lights.enabled);
-    for (int i = 0; i < NR_POINT_LIGHTS; ++i) {
-        if ((enb & (1 << i)) != 0)
-            result += calc_point_light(get_point_light(i), lightdata);
-    }
-
-    //phase 3: spot light
-    result += calc_spot_light(get_spot_light(), lightdata);
-
-    frag = vec4(result, 1.0);
-}
-
+@block lighting_functions
 dir_light_t get_directional_light() {
     return dir_light_t(
         inter.tang_dirlight_dir,
@@ -292,30 +189,4 @@ vec3 calc_spot_light(const spot_light_t light, const lightdata_t lightdata)
 
     return (ambient + diffuse + specular);
 }
-
 @end
-
-@program shdobj vs_obj fs_obj
-
-
-@vs light_cube_vs
-in vec3 pos;
-
-uniform vs_paramsl {
-    mat4 mvp;
-};
-
-void main() {
-    gl_Position = mvp * vec4(pos, 1.0);
-}
-@end
-
-@fs light_cube_fs
-out vec4 frag;
-
-void main() {
-    frag = vec4(1.0, 1.0, 1.0, 1.0);
-}
-@end
-
-@program light_cube light_cube_vs light_cube_fs

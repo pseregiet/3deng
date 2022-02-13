@@ -25,7 +25,8 @@ void animodel_plain(struct animodel *am);
 void animodel_interpolate(struct animodel *am);
 void animodel_joint2matrix(struct animodel *am);
 void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model);
-void animodel_fraguniforms(struct frameinfo *fi);
+void animodel_vertuniforms_slow(struct frameinfo *fi);
+void animodel_fraguniforms_slow(struct frameinfo *fi);
 
 void animodel_pipeline(struct pipelines *pipes);
 void animodel_shadow_pipeline(struct pipelines *pipes);

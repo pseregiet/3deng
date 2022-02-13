@@ -86,14 +86,81 @@ void animodel_joint2matrix(struct animodel *am)
     am->bonebuf = 0;
 }
 
-void animodel_fraguniforms(struct frameinfo *fi)
+static inline float bits2float(const bool *bits)
 {
-    fs_md5_t unifs = {
-        .uambi = fi->dirlight.ambi,
-        .udiff = fi->dirlight.diff,
-        .uspec = fi->dirlight.spec,
+    uint32_t in = 0;
+
+    for (int i = 0; i < 32; ++i)
+        if (bits[i])
+            in |= (1 << i);
+
+    return (float)in;
+}
+
+void animodel_fraguniforms_slow(struct frameinfo *fi)
+{
+    fs_md5_dirlight_t fs_dirlight = {
+        .ambi    =   fi->dirlight.ambi,
+        .diff    =   fi->dirlight.diff,
+        .spec    =   fi->dirlight.spec,
     };
-    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_vs_md5, &SG_RANGE(unifs));
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_md5_dirlight, &SG_RANGE(fs_dirlight));
+
+    fs_md5_pointlights_t fs_pointlights;
+    fs_pointlights.enabled = bits2float((bool *)&fi->lightsenable);
+    for (int i = 0; i < 4; ++i) {
+        fs_pointlights.ambi[i] =    HMM_Vec4v(fi->pointlight[i].ambi, 0.0f);
+        fs_pointlights.diff[i] =    HMM_Vec4v(fi->pointlight[i].diff, 0.0f);
+        fs_pointlights.spec[i] =    HMM_Vec4v(fi->pointlight[i].spec, 0.0f);
+        fs_pointlights.atte[i] =    HMM_Vec4v(fi->pointlight[i].atte, 0.0f);
+    }
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_md5_pointlights, &SG_RANGE(fs_pointlights));
+
+    fs_md5_spotlight_t fs_spotlight = {
+        .cutoff =       fi->spotlight.cutoff, //HMM_COSF(HMM_ToRadians(12.5f)),
+        .outcutoff =    fi->spotlight.outcutoff, //HMM_COSF(HMM_ToRadians(15.0f)),
+        .atte =         fi->spotlight.atte,
+        .ambi =         fi->spotlight.ambi,
+        .diff =         fi->spotlight.diff,
+        .spec =         fi->spotlight.spec,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_md5_spotlight, &SG_RANGE(fs_spotlight));
+}
+
+void animodel_vertuniforms_slow(struct frameinfo *fi)
+{
+    vs_md5_slow_t vs = {
+        .uvp           = fi->vp,
+        .uviewpos      = fi->cam.pos,
+        .usptlight_pos = fi->cam.pos,
+        .usptlight_dir = fi->cam.front,
+        .udirlight_dir = fi->dirlight.dir,
+    };
+    for (int i = 0; i < 4; ++i)
+        vs.upntlight_pos[i] = HMM_Vec4v(fi->pointlight[i].pos, 0.0f);
+
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5_slow, &SG_RANGE(vs));
+}
+
+inline static void animodel_vertuniforms_fast(
+        const hmm_mat4 model, const int *boneuv, const int *weightuv)
+{
+    vs_md5_fast_t vs = {
+        .umodel = model,
+        .uboneuv = {
+            boneuv[0],
+            boneuv[1],
+            boneuv[2],
+            boneuv[3]
+        },
+        .uweightuv = {
+            weightuv[0],
+            weightuv[1],
+            weightuv[2],
+            weightuv[3]
+        },
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5_fast, &SG_RANGE(vs));
 }
 
 void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
@@ -113,27 +180,13 @@ void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
         };
         sg_apply_bindings(&bind);
 
-        vs_md5_t univs = {
-            .umodel = model,
-            .uvp = fi->vp,
-            .uboneuv = {
-                am->boneuv[0],
-                am->boneuv[1],
-                am->boneuv[2],
-                am->boneuv[3],
-            },
-            .uweightuv = {
-                mesh->woffset,
-                0,
-                mdl->weightw,
-                mdl->weighth,
-            },
-            .ulightpos = fi->dirlight.dir,
-            .uviewpos = fi->cam.pos,
+        const int weightuv[4] = {
+            mesh->woffset,
+            0,
+            mdl->weightw,
+            mdl->weighth
         };
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5, &SG_RANGE(univs));
-
-
+        animodel_vertuniforms_fast(model, am->boneuv, weightuv);
         sg_draw(mesh->ioffset, mesh->icount, 1);
     }
 }

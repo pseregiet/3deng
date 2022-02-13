@@ -273,7 +273,8 @@ static void do_render_animat_objs(struct frameinfo *fi, double delta)
     animodel_mngr_upload_bones();
     sg_apply_pipeline(fi->pipes.animodel);
 
-    animodel_fraguniforms(fi);
+    animodel_vertuniforms_slow(fi);
+    animodel_fraguniforms_slow(fi);
     int end = animatmapobj_mngr_end();
     for (int i = 0; i < end; ++i) {
         struct animatmapobj *obj = animatmapobj_mngr_get(i);

@@ -60,12 +60,12 @@ FILE="\
 "
 
 echo "Compile shd_combo.glsl"
-sokol-shdc --input shd_combo.glsl --output genshd_combo.h --slang glsl330
+sokol-shdc --input shaders/shd_combo.glsl --output genshd_combo.h --slang glsl330
 echo "Compile shd_terrain.glsl"
-sokol-shdc --input shd_terrain.glsl --output genshd_terrain.h --slang glsl330
+sokol-shdc --input shaders/shd_terrain.glsl --output genshd_terrain.h --slang glsl330
 echo "Compile shd_hitboxcube.glsl"
-sokol-shdc --input shd_hitboxcube.glsl --output genshd_hitboxcube.h --slang glsl330
+sokol-shdc --input shaders/shd_hitboxcube.glsl --output genshd_hitboxcube.h --slang glsl330
 echo "Compile shd_md5.glsl"
-sokol-shdc --input shd_md5.glsl --output genshd_md5.h --slang glsl330
+sokol-shdc --input shaders/shd_md5.glsl --output genshd_md5.h --slang glsl330
 echo "Build the engine"
 $COMP $OPTS $FILE $LIBS
