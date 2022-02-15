@@ -189,11 +189,32 @@ static void calc_invmatrix(const struct temp_md5_model *model, struct md5_model 
     }
 }
 
+#define MIN_WEIGHT_POWER 8
+#define MAX_WEIGHT_POWER 12
+#define MIN_WEIGHT_WIDTH (1 << MIN_WEIGHT_POWER)
 static void calc_weightmap(const struct temp_md5_model *model, struct md5_model *mdl)
 {
     int totalwcount = 0;
-    for (int i = 0; i < model->mcount; ++i) {
+    for (int i = 0; i < model->mcount; ++i)
         totalwcount += model->meshes[i].wcount;
+
+    mdl->weightw = totalwcount;
+    mdl->weighth = 1;
+    if (totalwcount > MIN_WEIGHT_WIDTH) {
+        int power = 8;
+        int minround = totalwcount;
+        for (int i = 8; i <= 12; ++i) {
+            int rest = totalwcount % (1 << i);
+            if (rest < minround) {
+                power = i;
+                minround = rest;
+            }
+        }
+        const int realpower = (1 << power);
+        int rest = totalwcount % realpower;
+        totalwcount += (realpower - rest);
+        mdl->weightw = realpower;
+        mdl->weighth = totalwcount / realpower;
     }
 
     float *buf = (float *)malloc(totalwcount*2 * sizeof(float));
@@ -212,11 +233,8 @@ static void calc_weightmap(const struct temp_md5_model *model, struct md5_model 
             woffset++;
         }
     }
-    int w;
-    int h;
-    make_sg_image_16f(buf, totalwcount, &w, &h, &mdl->weightmap);
-    mdl->weightw = w;
-    mdl->weighth = h;
+    make_sg_image_16f(buf, mdl->weightw, mdl->weighth, &mdl->weightmap);
+    printf("weight: %dx%d\n", mdl->weightw, mdl->weighth);
     free(buf);
 }
 

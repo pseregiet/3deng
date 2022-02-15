@@ -5,6 +5,12 @@
         "anims": [
             "monsters/archvile/attack1"
         ]
+    },
+    {
+        "model": "people/tshirt",
+        "anims": [
+            "people/tshirt/walk_normal"
+        ]
     }
 ]
 }

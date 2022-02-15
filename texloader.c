@@ -251,24 +251,12 @@ sg_image texloader_find(const char *name)
     return kh_val(&textures.map, idx);
 }
 
-void make_sg_image_16f(float *ptr, int size, int *w, int *h, sg_image *img)
+void make_sg_image_16f(float *ptr, int w, int h, sg_image *img)
 {
-    int hi = 0;
-    int wi = 0;
-
-    if (size < 4096) {
-        wi = size;
-        hi = 1;
-    }
-    else {
-        hi = size/4096;
-        wi = 4096;
-    }
-
-    int bytesize = wi * hi * 8;
+    const int bytesize = w * h * 8;
     *img = sg_make_image(&(sg_image_desc) {
-        .width = wi,
-        .height = hi,
+        .width = w,
+        .height = h,
         .pixel_format = SG_PIXELFORMAT_RG32F,
         .min_filter = SG_FILTER_NEAREST,
         .mag_filter = SG_FILTER_NEAREST,
@@ -277,7 +265,4 @@ void make_sg_image_16f(float *ptr, int size, int *w, int *h, sg_image *img)
             .size = bytesize,
         },
     });
-
-    *w = wi;
-    *h = hi;
 }

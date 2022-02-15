@@ -142,8 +142,7 @@ void animodel_vertuniforms_slow(struct frameinfo *fi)
     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5_slow, &SG_RANGE(vs));
 }
 
-inline static void animodel_vertuniforms_fast(
-        const hmm_mat4 model, const int *boneuv, const int *weightuv)
+inline static void animodel_vertuniforms_fast(const hmm_mat4 model, const int *boneuv)
 {
     vs_md5_fast_t vs = {
         .umodel = model,
@@ -153,14 +152,16 @@ inline static void animodel_vertuniforms_fast(
             boneuv[2],
             boneuv[3]
         },
-        .uweightuv = {
-            weightuv[0],
-            weightuv[1],
-            weightuv[2],
-            weightuv[3]
-        },
     };
     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5_fast, &SG_RANGE(vs));
+}
+
+inline static void animodel_fraguniforms_fast()
+{
+    fs_md5_fast_t fs = {
+        .umatshine = (128.0f * 0.6f),
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_md5_fast, &SG_RANGE(fs));
 }
 
 void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
@@ -180,13 +181,14 @@ void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
         };
         sg_apply_bindings(&bind);
 
-        const int weightuv[4] = {
+        const int boneuv[4] = {
+            am->boneuv[0],
+            am->boneuv[1],
             mesh->woffset,
-            0,
-            mdl->weightw,
-            mdl->weighth
+            mdl->weightw
         };
-        animodel_vertuniforms_fast(model, am->boneuv, weightuv);
+        animodel_vertuniforms_fast(model, boneuv);
+        animodel_fraguniforms_fast();
         sg_draw(mesh->ioffset, mesh->icount, 1);
     }
 }
@@ -201,7 +203,7 @@ void animodel_pipeline(struct pipelines *pipes)
         .colors[0] = {
             .write_mask = SG_COLORMASK_RGB,
             .blend = {
-                .enabled = true,
+                .enabled = false,
                 .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA,
                 .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
             },
@@ -279,14 +281,8 @@ void animodel_shadow_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 
             .uboneuv = {
                 am->boneuv[0],
                 am->boneuv[1],
-                am->boneuv[2],
-                am->boneuv[3],
-            },
-            .uweightuv = {
                 mesh->woffset,
-                0,
-                mdl->weightw,
-                mdl->weighth,
+                mdl->weightw
             },
         };
         sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5_depth, &SG_RANGE(univs));

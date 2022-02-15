@@ -42,6 +42,7 @@ sg_image imgdummy = {0};
 struct sdlobjs sdl = {0};
 
 bool gquit = 0;
+bool playanim = true;
 
 struct frameinfo fi = {
     .cam = (struct camera) {
@@ -63,7 +64,8 @@ struct frameinfo fi = {
         .ambi = {0.05f, 0.05f, 0.05f},
         .diff = {0.8f, 0.8f, 0.8f},
         .spec = {1.0f, 1.0f, 1.0f},
-        .atte = {1.0f, 0.09f, 0.032f},
+        .atte = {1.0f, 0.0014f, 0.000007f}
+        //.atte = {1.0f, 0.09f, 0.032f},
     },
     .pointlight[1] = (struct pointlight) {
         .pos =  {2.3f, -3.3f, -4.0f},
@@ -93,6 +95,7 @@ struct frameinfo fi = {
         .diff = {1.0f, 1.0f, 1.0f},
         .spec = {1.0f, 1.0f, 1.0f},
         .atte = {1.0f, 0.09f, 0.032f},
+        //.atte = {1.0f, 0.0014f, 0.000007f}
         //.cutoff;
         //.outcutoff;
     },
@@ -178,6 +181,8 @@ static void do_imgui_frame(int w, int h, double delta)
     if (igCheckbox("Light enable4", &fi.lightsenable[3]))
         fi.pointlight[3].pos = fi.cam.pos;
 
+    igCheckbox("Enable anims", &playanim);
+
     if (igButton("Set lightdir", (ImVec2) {100.0f, 30.0f})) {
         fi.dirlight.dir = fi.cam.front;
     }
@@ -211,7 +216,8 @@ static void do_update(double delta)
 {
     double smalldelta = delta / 1000.f;
     worldedit_update(smalldelta);
-    do_update_animated(smalldelta);
+    if (playanim)
+        do_update_animated(smalldelta);
     //rotate static objects...very fucking static, lol
     /*
     static float rottt = 0.0f;

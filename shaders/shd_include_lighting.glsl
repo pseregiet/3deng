@@ -126,7 +126,8 @@ vec3 calc_dir_light(const dir_light_t light, const lightdata_t lightdata)
     float diff = max(dot(lightdata.normal, lightdir), 0.0);
     //specular
     vec3 reflectdir = reflect(-lightdir, lightdata.normal);
-    float spec = pow(max(dot(lightdata.viewdir, reflectdir), 0.0), lightdata.matshine);
+    vec3 halfwaydir = normalize(lightdir + lightdata.viewdir);
+    float spec = pow(max(dot(lightdata.normal, halfwaydir), 0.0), lightdata.matshine);
     //combine
     vec3 ambient = light.ambi * lightdata.pixdiff;
     vec3 diffuse = light.diff * diff * lightdata.pixdiff;

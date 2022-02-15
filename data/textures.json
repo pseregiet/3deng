@@ -1,22 +1,51 @@
 {
 "textures":[
     {
-        "name": "archvile/diff",
+        "name": "monsters/archvile/diff",
         "files": ["monsters/archvile/diff.qoi"],
         "min": "linear",
         "mag": "linear",
         "mips": true
     },
     {
-        "name": "archvile/norm",
+        "name": "monsters/archvile/norm",
         "files": ["monsters/archvile/norm.qoi"],
         "min": "linear",
         "mag": "linear",
         "mips": true
     },
     {
-        "name": "archvile/spec",
+        "name": "monsters/archvile/spec",
         "files": ["monsters/archvile/spec.qoi"],
+        "min": "linear",
+        "mag": "linear",
+        "mips": true
+    },
+    {
+        "name": "monsters/archvile_hand/diff",
+        "files": ["monsters/archvile_hand/diff.qoi"],
+        "min": "linear",
+        "mag": "linear",
+        "mips": true
+    },
+
+    {
+        "name": "people/tshirt/diff",
+        "files": ["people/tshirt/diff.qoi"],
+        "min": "linear",
+        "mag": "linear",
+        "mips": true
+    },
+    {
+        "name": "people/tshirt/spec2",
+        "files": ["people/tshirt/spec.qoi"],
+        "min": "linear",
+        "mag": "linear",
+        "mips": true
+    },
+    {
+        "name": "people/tshirt/norm",
+        "files": ["people/tshirt/norm.qoi"],
         "min": "linear",
         "mag": "linear",
         "mips": true

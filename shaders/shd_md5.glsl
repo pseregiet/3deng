@@ -7,12 +7,11 @@
 #define NR_POINT_LIGHTS 4
 
 @block bone_functions
-void get_mat4_from_texture(in sampler2D map, in ivec4 boneuv, in int index, out mat4 mat) {
-    ivec2 pos = ivec2(boneuv.x + index, boneuv.y);
-    if (pos.x >= boneuv.z) {
-        pos.y++;
-        pos.x = pos.x % boneuv.z;
-    }
+void get_mat4_from_texture(in sampler2D map, in int boffset, in int bstride, in int index, out mat4 mat) {
+    int i = boffset + index;
+    int x = i % bstride;
+    int y = i / bstride;
+    ivec2 pos = ivec2(x,y);
     vec4 m1 = texelFetch(map, pos, 0); pos.x++;
     vec4 m2 = texelFetch(map, pos, 0); pos.x++;
     vec4 m3 = texelFetch(map, pos, 0); pos.x++;
@@ -20,12 +19,11 @@ void get_mat4_from_texture(in sampler2D map, in ivec4 boneuv, in int index, out 
     mat = mat4(m1, m2, m3, m4);
 }
 
-void get_weight_from_texture(in sampler2D map, in ivec4 weightuv, in int index, out float bias, out float joint) {
-    ivec2 pos = ivec2(weightuv.x + index, weightuv.y);
-    if (weightuv.x >= weightuv.z) {
-        pos.y++;
-        pos.x = pos.x % weightuv.z;
-    }
+void get_weight_from_texture(in sampler2D map, in int woffset, in int wstride, in int index, out float bias, out float joint) {
+    int i = woffset + index;
+    int x = i % wstride;
+    int y = i / wstride;
+    ivec2 pos = ivec2(x,y);
     vec4 pixel = texelFetch(map, pos, 0);
     bias = pixel.x;
     joint = pixel.y;
@@ -38,7 +36,7 @@ void get_weight_from_texture(in sampler2D map, in ivec4 weightuv, in int index, 
 uniform vs_md5_depth {
     mat4 umodel;
     ivec4 uboneuv;
-    ivec4 uweightuv;
+    //ivec4 uweightuv;
 };
 uniform sampler2D bonemap;
 uniform sampler2D weightmap;
@@ -54,8 +52,8 @@ void main() {
         float bias;
         float joint;
         mat4 bonemat;
-        get_weight_from_texture(weightmap, uweightuv, wstart+i, bias, joint);
-        get_mat4_from_texture(bonemap, uboneuv, int(joint)*4, bonemat);
+        get_weight_from_texture(weightmap, uboneuv.z, uboneuv.w, wstart+i, bias, joint);
+        get_mat4_from_texture(bonemap, uboneuv.x, uboneuv.y, int(joint)*4, bonemat);
 
         bonetransform += (bonemat * bias);
     }
@@ -74,7 +72,7 @@ void main() {}
 uniform vs_md5_fast {
     mat4 umodel;
     ivec4 uboneuv;
-    ivec4 uweightuv;
+    //ivec4 uweightuv;
 };
 
 uniform vs_md5_slow {
@@ -107,8 +105,8 @@ void main() {
         float bias;
         float joint;
         mat4 bonemat;
-        get_weight_from_texture(weightmap, uweightuv, wstart+i, bias, joint);
-        get_mat4_from_texture(bonemap, uboneuv, int(joint)*4, bonemat);
+        get_weight_from_texture(weightmap, uboneuv.z, uboneuv.w, wstart+i, bias, joint);
+        get_mat4_from_texture(bonemap, uboneuv.x, uboneuv.y, int(joint)*4, bonemat);
 
         bonetransform += (bonemat * bias);
     }
@@ -154,7 +152,6 @@ uniform fs_md5_fast {
 uniform fs_md5_dirlight {
 @include_block lighting_fs_dirlight_uniforms
 } udir_light;
-
 
 uniform fs_md5_pointlights {
 @include_block lighting_fs_pointlight_uniforms

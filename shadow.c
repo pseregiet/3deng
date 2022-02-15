@@ -11,10 +11,12 @@ extern struct frameinfo fi;
 
 static void calc_lightmatrix()
 {
-    float near = 0.01f;
-    float far = 1200.0f;
-    hmm_mat4 lightproject = HMM_Orthographic(-600.f, 600.f, -600.f, 600.0f, near, far);
-    hmm_vec3 shadowstart = HMM_MultiplyVec3f(fi.dirlight.dir, -250.f);
+    const float near = 0.01f;
+    const float far = 1200.0f/2;
+    const float boxsize = 600.0f/2;
+    const float dist = -250.0f;
+    hmm_mat4 lightproject = HMM_Orthographic(-boxsize, boxsize, -boxsize, boxsize, near, far);
+    hmm_vec3 shadowstart = HMM_MultiplyVec3f(fi.dirlight.dir, dist);
     shadowstart = HMM_AddVec3(shadowstart, fi.cam.pos);
     hmm_mat4 lightview = HMM_LookAt(shadowstart, HMM_AddVec3(shadowstart, fi.dirlight.dir), HMM_Vec3(0.0f, 1.0f, 0.0f));
     fi.shadow.lightspace = HMM_MultiplyMat4(lightproject, lightview);

@@ -71,11 +71,15 @@ void animodel_mngr_calc_boneuv(struct animodel **ams, int count)
 
             if (newoffset < BONES_PER_TEXT) {
                 const int offsetuv = (curoffset * 4);
+                am->boneuv[0] = offsetuv;
+                am->boneuv[1] = TEXTURE_W;
+                /*
                 am->boneuv[0] = (offsetuv) % TEXTURE_W,
                 am->boneuv[1] = (offsetuv) / TEXTURE_W,
                     //TODO: These are const, so shouldn't be part of uniform
                 am->boneuv[2] = TEXTURE_W,
                 am->boneuv[3] = TEXTURE_H,
+                */
                 am->bonemap = boneimgs[i];
                 am->bonebuf = &bonebuf[i][curoffset * BONE_SIZE_F];
                 //assert(am->bonebuf == bonebuf[i]);
