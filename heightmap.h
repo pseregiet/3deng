@@ -2,7 +2,7 @@
 #define __heightmap_h
 
 #include "sokolgl.h"
-#include "texloader.h"
+#include "material.h"
 #include "hmm.h"
 #include <stdint.h>
 

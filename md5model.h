@@ -2,6 +2,7 @@
 #define __md5model_h
 #include "extrahmm.h"
 #include "sokolgl.h"
+#include "material.h"
 
 #define MD5_MAX_MESHES 4
 
@@ -31,15 +32,12 @@ struct md5_bbox {
 struct md5_mesh {
     sg_buffer vbuf;
     sg_buffer ibuf;
-    sg_image  imgd;
-    sg_image  imgs;
-    sg_image  imgn;
-    int vcount;
+    struct material material;
     int woffset;
-    uint16_t icount;
-    uint16_t ioffset;
-    int16_t wcount;
-    int16_t pad1;
+    int icount;
+    int ioffset;
+    uint16_t wcount;
+    uint16_t vcount;
 };
 
 struct md5_anim {
@@ -53,15 +51,16 @@ struct md5_anim {
 struct md5_model {
     sg_buffer bigvbuf;
     sg_buffer bigibuf;
-    struct md5_mesh meshes[MD5_MAX_MESHES];
-    struct md5_anim **anims;
-    hmm_mat4 *invmatrices;
     sg_image weightmap;
+    hmm_mat4 *invmatrices;
+    struct md5_anim **anims;
+    struct md5_mesh meshes[MD5_MAX_MESHES];
     int16_t mcount;
     int16_t jcount;
     int16_t acount;
     int16_t weightw;
     int16_t weighth;
+    int16_t padding;
 };
 
 int md5model_open(const char *fn, struct md5_model *mdl);

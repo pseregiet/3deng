@@ -12,8 +12,8 @@ extern struct frameinfo fi;
 static void calc_lightmatrix()
 {
     const float near = 0.01f;
-    const float far = 1200.0f/2;
-    const float boxsize = 600.0f/2;
+    const float far = 1200.0f;
+    const float boxsize = 500.0f;
     const float dist = -250.0f;
     hmm_mat4 lightproject = HMM_Orthographic(-boxsize, boxsize, -boxsize, boxsize, near, far);
     hmm_vec3 shadowstart = HMM_MultiplyVec3f(fi.dirlight.dir, dist);

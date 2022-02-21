@@ -56,7 +56,7 @@ FILE="\
     staticmapobj.c \
     stb_image.c \
     terrain.c \
-    texloader.c \
+    material.c \
 "
 
 echo "Compile shd_combo.glsl"

@@ -2,7 +2,6 @@
 #include <string.h>
 #include "md5model.h"
 #include "extrahmm.h"
-#include "texloader.h"
 #include "fileops.h"
 
 struct temp_md5_vert {
@@ -73,7 +72,7 @@ static void md5model_mesh(struct file *f, char **curline, struct temp_md5_model 
                 }
             }
         }
-        else if (sscanf(line, " numverts %d", &mesh->vcount) == 1) {
+        else if (sscanf(line, " numverts %uh", &mesh->vcount) == 1) {
             if (mesh->vcount > 0) {
                 mesh->vbuf = (struct temp_md5_vert *)
                     calloc(mesh->vcount, sizeof(*mesh->vbuf));
@@ -85,7 +84,7 @@ static void md5model_mesh(struct file *f, char **curline, struct temp_md5_model 
                     calloc(mesh->tcount, sizeof(*mesh->tbuf));
             }
         }
-        else if (sscanf(line, " numweights %d", &mesh->wcount) == 1) {
+        else if (sscanf(line, " numweights %uh", &mesh->wcount) == 1) {
             if (mesh->wcount > 0) {
                 mesh->wbuf = (struct md5_weight *)
                     calloc(mesh->wcount, sizeof(*mesh->wbuf));
@@ -189,6 +188,22 @@ static void calc_invmatrix(const struct temp_md5_model *model, struct md5_model 
     }
 }
 
+inline static void make_sg_image_16f(float *ptr, int w, int h, sg_image *img)
+{
+    const int bytesize = w * h * 8;
+    *img = sg_make_image(&(sg_image_desc) {
+        .width = w,
+        .height = h,
+        .pixel_format = SG_PIXELFORMAT_RG32F,
+        .min_filter = SG_FILTER_NEAREST,
+        .mag_filter = SG_FILTER_NEAREST,
+        .data.subimage[0][0] = {
+            .ptr = ptr,
+            .size = bytesize,
+        },
+    });
+}
+
 #define MIN_WEIGHT_POWER 8
 #define MAX_WEIGHT_POWER 12
 #define MIN_WEIGHT_WIDTH (1 << MIN_WEIGHT_POWER)
@@ -239,19 +254,14 @@ static void calc_weightmap(const struct temp_md5_model *model, struct md5_model 
 }
 
 extern sg_image imgdummy;
+extern sg_image imgdummy_norm;
 static void make_shader(struct md5_mesh *mesh, char *shader)
 {
-    mesh->imgd = imgdummy;
-    mesh->imgs = imgdummy;
-    mesh->imgn = imgdummy;
-
-    char tmp[0x1000];
-    snprintf(tmp, 0x1000, "%s/diff", shader);
-    mesh->imgd = texloader_find(tmp);
-    snprintf(tmp, 0x1000, "%s/spec", shader);
-    mesh->imgs = texloader_find(tmp);
-    snprintf(tmp, 0x1000, "%s/norm", shader);
-    mesh->imgn = texloader_find(tmp);
+    struct material *mat = material_mngr_find(shader);
+    if (mat)
+        mesh->material = *mat;
+    else
+        material_init_dummy(&mesh->material);
 }
 
 static void make_vbuf(struct md5vertex *vbuf, struct temp_md5_mesh *msrc,
@@ -462,13 +472,6 @@ closefile:
     return ret;
 }
 
-static void md5mesh_kill(struct md5_mesh *mesh)
-{
-    sg_destroy_image(mesh->imgd);
-    sg_destroy_image(mesh->imgs);
-    sg_destroy_image(mesh->imgn);
-}
-
 void md5model_kill(struct md5_model *model)
 {
     sg_destroy_image(model->weightmap);
@@ -482,9 +485,6 @@ void md5model_kill(struct md5_model *model)
             sg_destroy_buffer(mesh->ibuf);
         }
     }
-
-    for (int i = 0; i < model->mcount; ++i)
-        md5mesh_kill(&model->meshes[i]);
 
     if (model->invmatrices)
         free(model->invmatrices);

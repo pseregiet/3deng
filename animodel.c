@@ -156,10 +156,10 @@ inline static void animodel_vertuniforms_fast(const hmm_mat4 model, const int *b
     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_md5_fast, &SG_RANGE(vs));
 }
 
-inline static void animodel_fraguniforms_fast()
+inline static void animodel_fraguniforms_fast(const struct material *mat)
 {
     fs_md5_fast_t fs = {
-        .umatshine = (128.0f * 0.6f),
+        .umatshine = mat->shine.value,
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_md5_fast, &SG_RANGE(fs));
 }
@@ -175,9 +175,9 @@ void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
             .index_buffer = mesh->ibuf,
             .vs_images[SLOT_weightmap] = mdl->weightmap,
             .vs_images[SLOT_bonemap] = am->bonemap,
-            .fs_images[SLOT_imgdiff] = mesh->imgd,
-            .fs_images[SLOT_imgspec] = mesh->imgs,
-            .fs_images[SLOT_imgnorm] = mesh->imgn,
+            .fs_images[SLOT_imgdiff] = mesh->material.imgs[MAT_DIFF],
+            .fs_images[SLOT_imgspec] = mesh->material.imgs[MAT_SPEC],
+            .fs_images[SLOT_imgnorm] = mesh->material.imgs[MAT_NORM],
         };
         sg_apply_bindings(&bind);
 
@@ -188,7 +188,7 @@ void animodel_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model)
             mdl->weightw
         };
         animodel_vertuniforms_fast(model, boneuv);
-        animodel_fraguniforms_fast();
+        animodel_fraguniforms_fast(&mesh->material);
         sg_draw(mesh->ioffset, mesh->icount, 1);
     }
 }

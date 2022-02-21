@@ -2,7 +2,6 @@
 #include <string.h>
 #include "objmodel.h"
 #include "fileops.h"
-#include "texloader.h"
 #include "extrahmm.h"
 #include "genshd_combo.h"
 
@@ -64,6 +63,8 @@ struct objheader {
     uint32_t matlen;
 };
 
+extern sg_image imgdummy;
+extern sg_image imgdummy_norm;
 int objmodel_open(const char *fn, struct obj_model *mdl)
 {
     struct file f;
@@ -93,13 +94,26 @@ int objmodel_open(const char *fn, struct obj_model *mdl)
     char *matname = &f.udata[sizeof(header)];
     matname[header.matlen] = 0;
 
-    char tmp[0x1000];
-    snprintf(tmp, 0x1000, "%s/diff", matname);
-    mdl->imgdiff = texloader_find(tmp);
-    snprintf(tmp, 0x1000, "%s/spec", matname);
-    mdl->imgspec = texloader_find(tmp);
-    snprintf(tmp, 0x1000, "%s/norm", matname);
-    mdl->imgnorm = texloader_find(tmp);
+    struct material *mat = material_mngr_find(matname);
+    if (!mat) {
+        printf("Material %s not found!\n", matname);
+    }
+    else {
+        if (mat->flags & MAT_ARRAY) {
+            printf("Material %s is an array. Not compatible for objmodel\n", matname);
+            mat = 0;
+        }
+    }
+
+    if (mat)
+        mdl->material = *mat;
+    else
+        material_init_dummy(&mdl->material);
+
+    if (!(mdl->material.flags & MAT_HAS_SPEC))
+        mdl->material.imgs[MAT_SPEC] = imgdummy;
+    if (!(mdl->material.flags & MAT_HAS_NORM))
+        mdl->material.imgs[MAT_NORM] = imgdummy_norm;
 
     const int vbufsize = sizeof(struct vertex) * header.vertcount;
     const int ibufsize = sizeof(uint16_t) * header.indecount;
@@ -268,14 +282,14 @@ inline static void objmodel_vertuniforms_fast(hmm_mat4 model)
 void objmodel_render(const struct obj_model *mdl, struct frameinfo *fi, hmm_mat4 model)
 {
     objmodel_vertuniforms_fast(model);
-    objmodel_fraguniforms_fast(32.0f);
+    objmodel_fraguniforms_fast(mdl->material.shine.value);
 
     sg_bindings bind = {
         .vertex_buffers[0] = mdl->vbuf,
         .index_buffer = mdl->ibuf,
-        .fs_images[SLOT_imgdiff] = mdl->imgdiff,
-        .fs_images[SLOT_imgspec] = mdl->imgspec,
-        .fs_images[SLOT_imgnorm] = mdl->imgnorm,
+        .fs_images[SLOT_imgdiff] = mdl->material.imgs[MAT_DIFF],
+        .fs_images[SLOT_imgspec] = mdl->material.imgs[MAT_SPEC],
+        .fs_images[SLOT_imgnorm] = mdl->material.imgs[MAT_NORM],
     };
     sg_apply_bindings(&bind);
     sg_draw(0, mdl->icount, 1);

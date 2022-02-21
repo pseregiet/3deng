@@ -1,0 +1,83 @@
+{
+"materials":[
+    {
+        "name": "monsters/archvile",
+        "diff": ["monsters/archvile/diff.qoi"],
+        "spec": ["monsters/archvile/spec.qoi"],
+        "norm": ["monsters/archvile/norm.qoi"],
+        "shine": [32.0],
+        "min": true,
+        "mag": true,
+        "mips": true
+    },
+    {
+        "name": "people/tshirt",
+        "diff": ["people/tshirt/diff.qoi"],
+        "spec": ["people/tshirt/spec.qoi"],
+        "norm": ["people/tshirt/norm.qoi"],
+        "shine": [16.0],
+        "min": true,
+        "mag": true,
+        "mips": true
+    },
+    {
+        "name": "buildings/cottage",
+        "diff": ["buildings/cottage/diff.qoi"],
+        "norm": ["buildings/cottage/norm.qoi"],
+        "shine": [32.0],
+        "min": true,
+        "mag": true,
+        "mips": true
+    },
+    {
+        "name": "people/trump",
+        "diff": ["people/trump/diff.qoi"]
+    },
+    {
+        "name": "terrain",
+        "diff": [
+            "terrain/grass_mix_d.qoi",
+            "terrain/desert_mud_d.qoi",
+            "terrain/snow_mud_d.qoi",
+            "terrain/ground_dry2_d.qoi",
+            "terrain/mntn_dark_d.qoi"
+        ],
+        "spec": [
+            "terrain/grass_mix_s.qoi",
+            "terrain/desert_mud_s.qoi",
+            "terrain/snow_mud_s.qoi",
+            "terrain/ground_dry2_s.qoi",
+            "terrain/mntn_dark_s.qoi"
+        ],
+        "norm": [
+            "terrain/grass_mix_n.qoi",
+            "terrain/desert_mud_n.qoi",
+            "terrain/snow_mud_n.qoi",
+            "terrain/ground_dry2_n.qoi",
+            "terrain/mntn_dark_n.qoi"
+        ],
+        "shine": [
+            32.0,
+            16.0,
+            48.0,
+            60.0,
+            128.0
+        ],
+        "min": true,
+        "mag": true,
+        "mips": true
+    },
+    {
+        "name": "worldmap/alpha",
+        "diff": [
+            "worldmap/alpha_1.qoi",
+            "worldmap/alpha_2.qoi",
+            "worldmap/alpha_3.qoi",
+            "worldmap/alpha_4.qoi"
+        ],
+        "min": true,
+        "mag": true,
+        "mips": true
+    }
+]
+}

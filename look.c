@@ -25,7 +25,7 @@
 #include "objloader.h"
 #include "animatmapobj.h"
 #include "staticmapobj.h"
-#include "texloader.h"
+#include "material.h"
 #include "genshd_combo.h"
 #include "sdl2_imgui.h"
 
@@ -39,6 +39,7 @@
     exit(-1)
 
 sg_image imgdummy = {0};
+sg_image imgdummy_norm = {0};
 struct sdlobjs sdl = {0};
 
 bool gquit = 0;
@@ -326,19 +327,23 @@ static void do_render(struct frameinfo *fi, double delta)
 
 static int imgdummy_init()
 {
-    char data[4] = {0,0,0,0};
-
-    imgdummy = sg_make_image(&(sg_image_desc) {
+    const char data1[4] = {0,0,0,0};
+    const char data2[4] = {0x80,0x80,0xFF,0x00};
+    sg_image_desc imgdesc = {
         .width = 1,
         .height = 1,
         .pixel_format = SG_PIXELFORMAT_RGBA8,
         .min_filter = SG_FILTER_NEAREST,
         .mag_filter = SG_FILTER_NEAREST,
         .data.subimage[0][0] = {
-            .ptr = data,
+            .ptr = data1,
             .size = 4,
         },
-    });
+    };
+    imgdummy = sg_make_image(&imgdesc);
+
+    imgdesc.data.subimage[0][0].ptr = data2;
+    imgdummy_norm = sg_make_image(&imgdesc);
 
     //TODO: move this somewhere sensible
     fi.spotlight.cutoff = HMM_COSF(HMM_ToRadians(12.5f));
@@ -363,7 +368,7 @@ int main(int argc, char **argv)
 
     uint32_t init_start = SDL_GetTicks();
     assert(!imgdummy_init());
-    assert(!texloader_init());
+    assert(!material_mngr_init());
     assert(!pipelines_init(&fi.pipes));
     assert(!init_terrain());
     assert(!shadowmap_init());
@@ -461,7 +466,7 @@ int main(int argc, char **argv)
     shadowmap_kill();
     //kill_terrain();
     pipelines_kill(&fi.pipes);
-    texloader_kill();
+    material_mngr_kill();
     imgdummy_kill();
     
 

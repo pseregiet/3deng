@@ -1,6 +1,5 @@
 #include "terrain.h"
 #include "heightmap.h"
-#include "texloader.h"
 #include "genshd_terrain.h"
 #include "hmm.h"
 #include "extrahmm.h"
@@ -45,9 +44,13 @@ void terrain_pipeline(struct pipelines *pipes)
 
 int init_terrain()
 {
-    sg_image imgd = texloader_find("terrain/diff");
-    sg_image imgs = texloader_find("terrain/spec");
-    sg_image imgn = texloader_find("terrain/norm");
+    struct material *mat = material_mngr_find("terrain");
+    if (!mat || !(mat->flags & MAT_ARRAY))
+        return -1;
+
+    sg_image imgd = mat->imgs[MAT_DIFF];
+    sg_image imgs = mat->imgs[MAT_SPEC];
+    sg_image imgn = mat->imgs[MAT_NORM];
 
     if (!imgd.id || !imgs.id || !imgn.id)
         return -1;

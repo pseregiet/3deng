@@ -194,9 +194,11 @@ int worldmap_init(struct worldmap *map, const char *fn)
     if (load_map(fn, w, h, map))
         return -1;
 
-    map->blendmap = texloader_find("worldmap/alpha");
-    if (!map->blendmap.id)
+    struct material *bm = material_mngr_find("worldmap/alpha");
+    if (!bm || !(bm->flags & MAT_ARRAY) )
         return -1;
+
+    map->blendmap = bm->imgs[MAT_DIFF];
 
     return 0;
 }
