@@ -11,6 +11,7 @@ OPTS="\
     -I./3rdparty/sokol \
     -I./3rdparty/qoi \
     -I./3rdparty/glad \
+    -I./3rdparty/sort.h \
     -DGIT_HASH=${GITH} \
     -Wno-missing-braces \
     -Wall \
@@ -57,6 +58,10 @@ FILE="\
     stb_image.c \
     terrain.c \
     material.c \
+    atlas2d.c \
+    particle_mngr.c \
+    particle_emiter.c \
+    particle.c \
 "
 
 echo "Compile shd_combo.glsl"
@@ -67,5 +72,7 @@ echo "Compile shd_hitboxcube.glsl"
 sokol-shdc --input shaders/shd_hitboxcube.glsl --output genshd_hitboxcube.h --slang glsl330
 echo "Compile shd_md5.glsl"
 sokol-shdc --input shaders/shd_md5.glsl --output genshd_md5.h --slang glsl330
+echo "Compile shd_particle.glsl"
+sokol-shdc --input shaders/shd_particle.glsl --output genshd_particle.h --slang glsl330
 echo "Build the engine"
 $COMP $OPTS $FILE $LIBS

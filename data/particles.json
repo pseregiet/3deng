@@ -1,0 +1,19 @@
+{
+"particles": [
+    {
+        "name": "fire1",
+        "atlas": "fire1",
+        "index": 0,
+        "count": 9,
+        "fps": 10
+    },
+    {
+        "name": "coin1",
+        "atlas": "coin1",
+        "index": 0,
+        "count": 12,
+        "fps": 12
+    }
+
+]
+}

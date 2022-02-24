@@ -19,6 +19,8 @@ struct tmpmat {
     char *name;
     char **fns;
     int count;
+    uint16_t width;
+    uint16_t height;
     bool min_filter;
     bool mag_filter;
     bool mips;
@@ -74,6 +76,9 @@ static int texture_load(struct tmpmat *mat, sg_image *img)
         goto freebuf;
     }
     closefile(&f);
+
+    mat->width = d1.width;
+    mat->height = d1.height;
 
     for (int i = 1; i < mat->count; ++i) {
         snprintf(tmp, 0x1000, "data/materials/%s", mat->fns[i]);
@@ -310,6 +315,8 @@ static int material_mngr_json()
         }
 
         finalmat.count = diffcount;
+        finalmat.width = tmpmat.width;
+        finalmat.height = tmpmat.height;
         material_append(&tmpmat, &finalmat);
     }
 

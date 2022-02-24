@@ -78,6 +78,14 @@
         "min": true,
         "mag": true,
         "mips": true
+    },
+    {
+        "name": "atlas2d/fire1",
+        "diff": ["atlas2d/fire1.qoi"]
+    },
+    {
+        "name": "atlas2d/coin1",
+        "diff": ["atlas2d/coin1.qoi"]
     }
 ]
 }

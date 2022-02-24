@@ -26,6 +26,8 @@
 #include "animatmapobj.h"
 #include "staticmapobj.h"
 #include "material.h"
+#include "atlas2d.h"
+#include "particle_mngr.h"
 #include "genshd_combo.h"
 #include "sdl2_imgui.h"
 
@@ -44,6 +46,8 @@ struct sdlobjs sdl = {0};
 
 bool gquit = 0;
 bool playanim = true;
+
+struct particle_emiter gPE = {0};
 
 struct frameinfo fi = {
     .cam = (struct camera) {
@@ -219,6 +223,13 @@ static void do_update(double delta)
     worldedit_update(smalldelta);
     if (playanim)
         do_update_animated(smalldelta);
+
+    struct particle_emiter *petab[1] = {
+        &gPE
+    };
+    particle_mngr_calc_buffers(petab, 1);
+    particle_emiter_update(&gPE, &fi, smalldelta);
+    particle_mngr_upload_vbuf();
     //rotate static objects...very fucking static, lol
     /*
     static float rottt = 0.0f;
@@ -311,6 +322,12 @@ static void do_render(struct frameinfo *fi, double delta)
     do_render_static_objs(fi, delta);
     //do_render_lightcubes(fi, delta, &munis);
     do_render_animat_objs(fi, delta);
+
+    //particles
+    sg_apply_pipeline(fi->pipes.particle);
+    particle_emiter_vertuniforms_slow(fi);
+    particle_emiter_render(&gPE);
+
     worldedit_render();
 
 
@@ -369,6 +386,9 @@ int main(int argc, char **argv)
     uint32_t init_start = SDL_GetTicks();
     assert(!imgdummy_init());
     assert(!material_mngr_init());
+    assert(!atlas2d_mngr_init());
+    assert(!particle_base_init());
+    assert(!particle_mngr_init());
     assert(!pipelines_init(&fi.pipes));
     assert(!init_terrain());
     assert(!shadowmap_init());
@@ -378,6 +398,8 @@ int main(int argc, char **argv)
     assert(!animatmapobj_mngr_init());
     assert(!staticmapobj_mngr_init());
     assert(!worldedit_init());
+
+    particle_emiter_init(&gPE, HMM_Vec3(0.0, 0.0, 0.0), "coin1");
 
     float vertices[36*3] =
     {
@@ -466,6 +488,9 @@ int main(int argc, char **argv)
     shadowmap_kill();
     //kill_terrain();
     pipelines_kill(&fi.pipes);
+    particle_mngr_kill();
+    particle_base_kill();
+    atlas2d_mngr_kill();
     material_mngr_kill();
     imgdummy_kill();
     

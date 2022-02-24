@@ -31,6 +31,8 @@ union matshine {
 struct material {
     union matshine shine;
     sg_image imgs[MAT_COUNT];
+    uint16_t width;
+    uint16_t height;
     uint16_t count;
     uint16_t flags;
 };

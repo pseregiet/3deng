@@ -1,0 +1,5 @@
+Source: https://github.com/swenson/sort
+License: MIT
+Commit used: 5820a8094e4a2ae1c88ac8f8df7735c332ee62ff
+Changes:
+ * only sort.h, LICENSE.md files taken
