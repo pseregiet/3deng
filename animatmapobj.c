@@ -1,8 +1,7 @@
 #include "animatmapobj.h"
-#include "fileops.h"
 #include "extrahmm.h"
-#include "cJSON.h"
 #include "kvec.h"
+#include "json_helpers.h"
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
@@ -26,23 +25,14 @@ static int append_object(const char *model, hmm_vec3 pos,
 
 static int parse_json()
 {
-    const char *fn = "data/world_animated_objects.json";
+    const char *fn = "world_animated_objects";
     struct file jf;
+    cJSON *json;
+    cJSON *root;
     int ret = -1;
-    if (openfile(&jf, fn))
+
+    if (json_start(fn, &json, &root, &jf))
         return -1;
-
-    cJSON *json = cJSON_ParseWithLength(jf.udata, jf.usize);
-    if (!json) {
-        printf("cJSON_Parse(%s) failed\n", fn);
-        goto freebuf;
-    }
-
-    cJSON *root = cJSON_GetObjectItem(json, "world_animated_objects");
-    if (!root || root->type != cJSON_Array) {
-        printf("no world_animated_objects array found\n");
-        goto freejson;
-    }
 
     cJSON *obj = 0;
     int objcount = 0;
@@ -98,7 +88,6 @@ static int parse_json()
     ret = 0;
 freejson:
     cJSON_Delete(json);
-freebuf:
     closefile(&jf);
     return ret;
 }

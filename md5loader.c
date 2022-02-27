@@ -1,9 +1,8 @@
 #include "md5loader.h"
 #include "md5model.h"
 #include "growing_allocator.h"
-#include "fileops.h"
 #include "khash.h"
-#include "cJSON.h"
+#include "json_helpers.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -19,21 +18,6 @@ static struct models {
     struct growing_alloc names;
     khash_t(modelmap) map;
 } models;
-
-#define MODELS_PER_POOL 10
-#define MODELS_POOL_COUNT 1
-#define ANIMS_PER_POOL 10
-#define ANIMS_POOL_COUNT 1
-
-inline static char *addname(struct growing_alloc *alloc, const char *name)
-{
-    int namelen = strlen(name);
-    char *newname = growing_alloc_get(alloc, namelen+1);
-    assert(newname);
-    memcpy(newname, name, namelen);
-    newname[namelen] = 0;
-    return newname;
-}
 
 static struct md5_model *model_append(const char *fp, const char *name)
 {
@@ -121,23 +105,13 @@ static void fixup_animations_pointers() {
 }
 
 static int md5models_json() {
-    const char *fn = "data/md5models.json";
+    const char *fn = "md5models";
     struct file jf;
+    cJSON *json;
+    cJSON *root;
     int ret = -1;
-    if (openfile(&jf, fn))
+    if (json_start(fn, &json, &root, &jf))
         return -1;
-
-    cJSON *json = cJSON_ParseWithLength(jf.udata, jf.usize);
-    if (!json) {
-        printf("cJSON_Parse(%s) failed\n", fn);
-        goto freebuf;
-    }
-
-    cJSON *root = cJSON_GetObjectItem(json, "md5models");
-    if (!root || root->type != cJSON_Array) {
-        printf("no md5models array found\n");
-        goto freejson;
-    }
 
     cJSON *mdl = 0;
     int mdlcount = 0;
@@ -171,7 +145,6 @@ static int md5models_json() {
     ret = 0;
 freejson:
     cJSON_Delete(json);
-freebuf:
     closefile(&jf);
     return ret;
 }

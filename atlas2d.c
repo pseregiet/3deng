@@ -1,8 +1,7 @@
 #include "atlas2d.h"
 #include "khash.h"
 #include "kvec.h"
-#include "cJSON.h"
-#include "fileops.h"
+#include "json_helpers.h"
 #include "growing_allocator.h"
 #include "material.h"
 
@@ -16,26 +15,6 @@ static struct atlases {
     khash_t(atlasmap) map;
     kvec_t(sg_buffer) bufs;
 } atlases;
-
-static int json_get_array_count(cJSON *obj)
-{
-    int count = 0;
-    cJSON *tmp;
-    cJSON_ArrayForEach(tmp, obj)
-        count++;
-
-    return count;
-}
-
-inline static char *addname(struct growing_alloc *alloc, const char *name)
-{
-    int namelen = strlen(name);
-    char *newname = growing_alloc_get(alloc, namelen+1);
-    assert(newname);
-    memcpy(newname, name, namelen);
-    newname[namelen] = 0;
-    return newname;
-}
 
 static int atlas_append(struct atlas2d *atlas, const char *name)
 {
@@ -180,23 +159,14 @@ static void make_buffers(int spritecount)
 
 static int atlas2d_json()
 {
-    const char *fn = "data/atlas2d.json";
+    const char *fn = "atlases";
     struct file jf;
+    cJSON *json;
+    cJSON *root;
     int ret = -1;
-    if (openfile(&jf, fn))
+
+    if (json_start(fn, &json, &root, &jf))
         return -1;
-
-    cJSON *json = cJSON_ParseWithLength(jf.udata, jf.usize);
-    if (!json) {
-        printf("cJSON_Parse(%s) failed\n", fn);
-        goto freebuf;
-    }
-
-    cJSON *root = cJSON_GetObjectItem(json, "atlases");
-    if (!root || root->type != cJSON_Array) {
-        printf("no atlases array found\n");
-        goto freejson;
-    }
 
     cJSON *atl = 0;
     int atlid = 0;
@@ -257,7 +227,6 @@ static int atlas2d_json()
     ret = 0;
 freejson:
     cJSON_Delete(json);
-freebuf:
     closefile(&jf);
     return ret;
 }

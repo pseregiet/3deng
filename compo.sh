@@ -59,6 +59,7 @@ FILE="\
     terrain.c \
     material.c \
     atlas2d.c \
+    json_helpers.c \
     particle_mngr.c \
     particle_emiter.c \
     particle.c \

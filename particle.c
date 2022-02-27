@@ -1,8 +1,7 @@
 #include "particle.h"
 #include "khash.h"
-#include "cJSON.h"
 #include "growing_allocator.h"
-#include "fileops.h"
+#include "json_helpers.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -13,16 +12,6 @@ static struct particles {
     struct growing_alloc names;
     khash_t(partimap) map;
 } particles;
-
-inline static char *addname(struct growing_alloc *alloc, const char *name)
-{
-    int namelen = strlen(name);
-    char *newname = growing_alloc_get(alloc, namelen+1);
-    assert(newname);
-    memcpy(newname, name, namelen);
-    newname[namelen] = 0;
-    return newname;
-}
 
 static int particle_base_append(struct particle_base *pb, const char *name)
 {
@@ -72,23 +61,14 @@ static int validate_particle_base(struct particle_base *pb, const char *atlasnam
 
 static int particle_base_json()
 {
-    const char *fn = "data/particles.json";
+    const char *fn = "particles";
     struct file jf;
+    cJSON *json;
+    cJSON *root;
     int ret = -1;
-    if (openfile(&jf, fn))
+
+    if (json_start(fn, &json, &root, &jf))
         return -1;
-
-    cJSON *json = cJSON_ParseWithLength(jf.udata, jf.usize);
-    if (!json) {
-        printf("cJSON_Parse(%s) failed\n", fn);
-        goto freebuf;
-    }
-
-    cJSON *root = cJSON_GetObjectItem(json, "particles");
-    if (!root || root->type != cJSON_Array) {
-        printf("no particles array found\n");
-        goto freejson;
-    }
 
     cJSON *part = 0;
     int partid = 0;
@@ -132,7 +112,6 @@ static int particle_base_json()
     ret = 0;
 freejson:
     cJSON_Delete(json);
-freebuf:
     closefile(&jf);
     return ret;
 }

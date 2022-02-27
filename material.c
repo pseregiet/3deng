@@ -1,9 +1,8 @@
 #include "material.h"
 #include "growing_allocator.h"
-#include "fileops.h"
 #include "qoi.h"
-#include "cJSON.h"
 #include "khash.h"
+#include "json_helpers.h"
 
 #include <stdio.h>
 #include <assert.h>
@@ -25,16 +24,6 @@ struct tmpmat {
     bool mag_filter;
     bool mips;
 };
-
-static int json_get_array_count(cJSON *obj)
-{
-    int count = 0;
-    cJSON *tmp;
-    cJSON_ArrayForEach(tmp, obj)
-        count++;
-
-    return count;
-}
 
 static void copy_fns(char **fns, cJSON *obj)
 {
@@ -134,16 +123,6 @@ freefile:
     return ret;
 }
 
-inline static char *addname(struct growing_alloc *alloc, const char *name)
-{
-    int namelen = strlen(name);
-    char *newname = growing_alloc_get(alloc, namelen+1);
-    assert(newname);
-    memcpy(newname, name, namelen);
-    newname[namelen] = 0;
-    return newname;
-}
-
 static int material_append(struct tmpmat *tmpmat, struct material *finalmat)
 {
     khint_t idx = kh_get(matmap, &materials.map, tmpmat->name);
@@ -175,25 +154,16 @@ static void material_kill(struct material *mat)
 
 static int material_mngr_json()
 {
-    const char *fn = "data/materials.json";
+    const char *fn = "materials";
     struct material *finalptr;
     struct tmpmat tmpmat = {0};
     struct file jf;
+    cJSON *json;
+    cJSON *root;
     int ret = -1;
-    if (openfile(&jf, fn))
+
+    if (json_start(fn, &json, &root, &jf))
         return -1;
-
-    cJSON *json = cJSON_ParseWithLength(jf.udata, jf.usize);
-    if (!json) {
-        printf("cJSON_Parse(%s) failed\n", fn);
-        goto freebuf;
-    }
-
-    cJSON *root = cJSON_GetObjectItem(json, "materials");
-    if (!root || root->type != cJSON_Array) {
-        printf("no materials array found\n");
-        goto freejson;
-    }
 
     cJSON *mat = 0;
     int matid = 0;
@@ -329,7 +299,6 @@ freetmpmat:
     material_kill(finalptr);
 freejson:
     cJSON_Delete(json);
-freebuf:
     closefile(&jf);
     return ret;
 }
