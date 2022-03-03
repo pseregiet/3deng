@@ -1,5 +1,8 @@
 #include "animodel.h"
+#include "md5bbox.h"
+#include "wirebox.h"
 #include "genshd_md5.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -84,6 +87,20 @@ void animodel_joint2matrix(struct animodel *am)
     }
 
     am->bonebuf = 0;
+}
+
+void animodel_calc_bbox(struct animodel *am, hmm_mat4 matrix)
+{
+    hmm_mat4 *bboxdst = &am->bbox;
+    struct md5_anim *anim = am->model->anims[am->curranim];
+    struct md5_bbox *bboxsrc = &anim->bboxes[am->currframe];
+
+    md5bbox_calc(bboxsrc, bboxdst, matrix);
+}
+
+void animodel_render_bbox(struct animodel *am, struct frameinfo *fi)
+{
+    wirebox_render(fi, am->bbox);
 }
 
 static inline float bits2float(const bool *bits)

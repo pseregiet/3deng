@@ -19,9 +19,6 @@ struct obj_model {
     struct material material;
 };
 
-void cube_index_buffer_init();
-void cube_index_buffer_kill();
-
 int objmodel_open(const char *fn, struct obj_model *mdl);
 void objmodel_kill(struct obj_model *mdl);
 

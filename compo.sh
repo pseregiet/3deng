@@ -39,7 +39,7 @@ FILE="\
     fileops.c \
     growing_allocator.c \
     heightmap.c \
-    hitbox.c \
+    wirebox.c \
     lightcube.c \
     look.c \
     md5anim.c \
@@ -69,8 +69,8 @@ echo "Compile shd_combo.glsl"
 sokol-shdc --input shaders/shd_combo.glsl --output genshd_combo.h --slang glsl330
 echo "Compile shd_terrain.glsl"
 sokol-shdc --input shaders/shd_terrain.glsl --output genshd_terrain.h --slang glsl330
-echo "Compile shd_hitboxcube.glsl"
-sokol-shdc --input shaders/shd_hitboxcube.glsl --output genshd_hitboxcube.h --slang glsl330
+echo "Compile shd_wirebox.glsl"
+sokol-shdc --input shaders/shd_wirebox.glsl --output genshd_wirebox.h --slang glsl330
 echo "Compile shd_md5.glsl"
 sokol-shdc --input shaders/shd_md5.glsl --output genshd_md5.h --slang glsl330
 echo "Compile shd_particle.glsl"

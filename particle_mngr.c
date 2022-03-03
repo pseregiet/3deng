@@ -77,7 +77,7 @@ void particle_mngr_calc_buffers(struct particle_emiter **pes, int count)
         struct particle_emiter *pe = pes[p];
         for (int i = 0; i < PARTICLE_VBUF_COUNT; ++i) {
             const int curoffset = pgpu.bufoffset[i];
-            const int newoffset = curoffset + pe->count;
+            const int newoffset = curoffset + pe->countalive;
 
             if (newoffset < PARTICLE_COUNT_PER_VBUF) {
                 pe->cpubuf = &pgpu.cpubufs[i][curoffset];

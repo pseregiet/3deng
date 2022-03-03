@@ -182,14 +182,6 @@ void objmodel_pipeline(struct pipelines *pipes)
         },
         .index_type = SG_INDEXTYPE_UINT16,
         .layout = {
-            /*
-            .buffers = {
-                [ATTR_vs_obj_apos] = {.stride = sizeof(float) * 11},
-                [ATTR_vs_obj_anorm] = {.stride = sizeof(float) * 11},
-                [ATTR_vs_obj_auv] = {.stride = sizeof(float) * 11},
-            },
-            */
-
             .attrs = {
                 [ATTR_vs_obj_apos]  = {.format = SG_VERTEXFORMAT_FLOAT3},
                 [ATTR_vs_obj_anorm] = {.format = SG_VERTEXFORMAT_FLOAT3},

@@ -3,13 +3,7 @@
 #define SORT_NAME sort
 #define SORT_TYPE struct particle
 #define SORT_CMP(y, x)  ((x).camdist < (y).camdist ? -1 : ((y).camdist < (x).camdist ? 1 : 0))
-//#define SORT_CMP(y, x) ((x).camdist - (y).camdist)
 #include "sort.h"
-/*
-#define SORT_CMP(x, y) ((x).camdist - (y).camdist)
-#define MAX(x, y) ((x).camdist > (y).camdist ? (x) : (y))
-#define MIN(x, y) ((x).camdist < (y).camdist ? (x) : (y))
-*/
 
 int particle_emiter_init(struct particle_emiter *pe, hmm_vec3 pos, const char *name)
 {
@@ -41,7 +35,6 @@ void particle_emiter_kill(struct particle_emiter *pe)
 void particle_emiter_vertuniforms_slow(struct frameinfo *fi)
 {
     vs_particle_slow_t vs = {
-        //.uproject = fi->projection,
         .uvp = fi->vp,
     };
     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_particle_slow, &SG_RANGE(vs));
@@ -50,13 +43,6 @@ void particle_emiter_vertuniforms_slow(struct frameinfo *fi)
 inline static void sort_particles(struct particle_emiter *pe)
 {
     sort_quick_sort(pe->particles, pe->count);
-    float lastbig = pe->particles[0].camdist;
-    for (int i = 1; i < pe->countalive; ++i) {
-        if (lastbig < pe->particles[i].camdist)
-            printf("[%d] = %f vs lastbig: %f\n",
-                    i, pe->particles[i].camdist, lastbig);
-        lastbig = pe->particles[i].camdist;
-    }
 }
 
 static int find_free_particle(struct particle_emiter *pe)

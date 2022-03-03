@@ -71,6 +71,7 @@ struct frameinfo {
 
     bool lightsenable[32];
     enum videodriver vd;
+    bool draw_bbox;
 };
 
 #endif

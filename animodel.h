@@ -9,6 +9,7 @@ struct animodel {
     const struct md5_model *model;
     struct md5_joint *interp;
     float *bonebuf;
+    hmm_mat4 bbox;
     sg_image bonemap;
     int boneuv[4];
     int curranim;
@@ -31,5 +32,8 @@ void animodel_fraguniforms_slow(struct frameinfo *fi);
 void animodel_pipeline(struct pipelines *pipes);
 void animodel_shadow_pipeline(struct pipelines *pipes);
 void animodel_shadow_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 model);
+
+void animodel_calc_bbox(struct animodel *am, hmm_mat4 matrix);
+void animodel_render_bbox(struct animodel *am, struct frameinfo *fi);
 #endif
 

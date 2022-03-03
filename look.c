@@ -20,7 +20,7 @@
 #include "terrain.h"
 #include "worldedit.h"
 #include "shadow.h"
-#include "hitbox.h"
+#include "wirebox.h"
 #include "animodel_mngr.h"
 #include "objloader.h"
 #include "animatmapobj.h"
@@ -104,6 +104,7 @@ struct frameinfo fi = {
         //.cutoff;
         //.outcutoff;
     },
+    .draw_bbox = false,
 };
 
 static void sdl_video_driver()
@@ -187,6 +188,7 @@ static void do_imgui_frame(int w, int h, double delta)
         fi.pointlight[3].pos = fi.cam.pos;
 
     igCheckbox("Enable anims", &playanim);
+    igCheckbox("Draw bboxes", &fi.draw_bbox);
 
     if (igButton("Set lightdir", (ImVec2) {100.0f, 30.0f})) {
         fi.dirlight.dir = fi.cam.front;
@@ -201,11 +203,13 @@ static void do_update_animated(double delta)
 {
     int end = animatmapobj_mngr_end();
     struct animodel *mdls[end];
+    struct animatmapobj *objs[end];
 
     //here we would do sorting, culling etc.
     for (int i = 0; i < end; ++i) {
         struct animatmapobj *obj = animatmapobj_mngr_get(i);
         mdls[i] = &obj->am;
+        objs[i] = obj;
     }
     animodel_mngr_calc_boneuv(mdls, end);
 
@@ -215,6 +219,10 @@ static void do_update_animated(double delta)
         //animodel_interpolate(mdls[i]);
         animodel_joint2matrix(mdls[i]);
     }
+
+    if (fi.draw_bbox)
+        for (int i = 0; i < end; ++i)
+            animodel_calc_bbox(mdls[i], objs[i]->matrix);
 }
 
 static void do_update(double delta)
@@ -227,8 +235,8 @@ static void do_update(double delta)
     struct particle_emiter *petab[1] = {
         &gPE
     };
-    particle_mngr_calc_buffers(petab, 1);
     particle_emiter_update(&gPE, &fi, smalldelta);
+    particle_mngr_calc_buffers(petab, 1);
     particle_mngr_upload_vbuf();
     //rotate static objects...very fucking static, lol
     /*
@@ -297,6 +305,14 @@ static void do_render_animat_objs(struct frameinfo *fi, double delta)
     for (int i = 0; i < end; ++i) {
         struct animatmapobj *obj = animatmapobj_mngr_get(i);
         animodel_render(&obj->am, fi, obj->matrix);
+    }
+
+    if (fi->draw_bbox) {
+        wirebox_prepare_render(fi);
+        for (int i = 0; i < end; ++i) {
+            struct animatmapobj *obj = animatmapobj_mngr_get(i);
+            animodel_render_bbox(&obj->am, fi);
+        }
     }
 }
 
@@ -397,6 +413,7 @@ int main(int argc, char **argv)
     assert(!animodel_mngr_init());
     assert(!animatmapobj_mngr_init());
     assert(!staticmapobj_mngr_init());
+    assert(!wirebox_init());
     assert(!worldedit_init());
 
     particle_emiter_init(&gPE, HMM_Vec3(0.0, 0.0, 0.0), "coin1");
@@ -480,6 +497,7 @@ int main(int argc, char **argv)
     }
 
     worldedit_kill();
+    wirebox_kill();
     staticmapobj_mngr_kill();
     animatmapobj_mngr_kill();
     animodel_mngr_kill();
