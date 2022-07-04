@@ -1,2 +1,3 @@
 a.out
-genshd_*
+engine
+builddir/*

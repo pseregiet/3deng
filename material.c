@@ -155,7 +155,7 @@ static void material_kill(struct material *mat)
 static int material_mngr_json()
 {
     const char *fn = "materials";
-    struct material *finalptr;
+    struct material *finalptr = 0;
     struct tmpmat tmpmat = {0};
     struct file jf;
     cJSON *json;
