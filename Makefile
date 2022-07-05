@@ -25,6 +25,7 @@ LIBS = \
 FILE = \
     3rdparty/glad/glad.c \
     3rdparty/cJSON/cJSON.c \
+    rand.c \
     qoi.c \
     animatmapobj.c \
     animodel.c \
