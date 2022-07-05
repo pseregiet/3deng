@@ -9,6 +9,7 @@ OPTS = \
     -I./3rdparty/qoi \
     -I./3rdparty/glad \
     -I./3rdparty/sort.h \
+    -I./3rdparty/stb \
     -I./$(OUTD) \
     -DGIT_HASH=$(GITH) \
     -Wno-missing-braces \
@@ -25,8 +26,11 @@ LIBS = \
 FILE = \
     3rdparty/glad/glad.c \
     3rdparty/cJSON/cJSON.c \
+    implements/qoi.c \
+    implements/sokol_gfx.c \
+    implements/sokol_imgui.c \
+    implements/stb_image.c \
     rand.c \
-    qoi.c \
     animatmapobj.c \
     animodel.c \
     animodel_mngr.c \
@@ -49,10 +53,7 @@ FILE = \
     pipelines.c \
     sdl2_imgui.c \
     shadow.c \
-    sokol_gfx.c \
-    sokol_imgui.c \
     staticmapobj.c \
-    stb_image.c \
     terrain.c \
     material.c \
     atlas2d.c \

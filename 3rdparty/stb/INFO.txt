@@ -1,0 +1,5 @@
+Source: https://github.com/nothings/stb
+License: MIT
+Commit used: af1a5bc352164740c1cc1354942b1c6b72eacb8a
+Changes:
+  * only stb_image.h, README.md, LICENSE files taken
