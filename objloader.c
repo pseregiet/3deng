@@ -6,11 +6,10 @@
 #include <assert.h>
 #include <stdio.h>
 
-KHASH_MAP_INIT_STR(modelmap, struct obj_model *)
+KHASH_MAP_INIT_STR(modelmap, struct obj_model)
 
 static struct models {
     struct growing_alloc names;
-    kvec_t(struct obj_model) models;
     khash_t(modelmap) map;
 } models;
 
@@ -23,12 +22,10 @@ static int append_model(const char *fp, const char *name)
         return -1;
     }
 
-    kv_push(struct obj_model, models.models, mdl);
-
     char *newname = addname(&models.names, name);
     int ret;
     khint_t idx = kh_put(modelmap, &models.map, newname, &ret);
-    kh_value(&models.map, idx) = &kv_A(models.models, kv_size(models.models)-1);
+    kh_value(&models.map, idx) = mdl;
 
     return 0;
 }
@@ -50,7 +47,7 @@ static int load_model(const char *model)
     return append_model(fp, model);
 }
 
-static int parse_json()
+static int objloader_json()
 {
     const char *fn = "objmodels";
     struct file jf;
@@ -88,29 +85,30 @@ struct obj_model *objloader_find(const char *name)
     if (idx == kh_end(&models.map))
         return 0;
 
-    return kh_val(&models.map, idx);
+    return &kh_val(&models.map, idx);
 }
 
 int objloader_init()
 {
     assert(!growing_alloc_init(&models.names, 0, 1));
-    kv_init(models.models);
-    kv_resize(struct obj_model, models.models, DEFAULT_OBJ_COUNT);
 
     memset(&models.map, 0, sizeof(models.map));
     kh_resize(modelmap, &models.map, DEFAULT_OBJ_COUNT);
-    return parse_json();
+    return objloader_json();
 }
 
 void objloader_kill()
 {
-    growing_alloc_kill(&models.names);
-    for (int i = 0; i < kv_size(models.models); ++i) {
-        struct obj_model *obj = &kv_A(models.models, i);
-        if (obj)
-            objmodel_kill(obj);
+    khint_t i;
+    for (i = kh_begin(&models.map); i != kh_end(&models.map); ++i) {
+        if (!kh_exist(&models.map, i))
+            continue;
+
+        objmodel_kill(&kh_val(&models.map, i));
     }
-    kv_destroy(models.models);
+
+    kh_destroy(modelmap, &models.map);
+    growing_alloc_kill(&models.names);
 }
 
 int objloader_get(int idx, const char **name, const struct obj_model **mdl)
@@ -119,7 +117,7 @@ int objloader_get(int idx, const char **name, const struct obj_model **mdl)
     if (!kh_exist(&models.map, i))
         return -1;
 
-    *mdl = kh_val(&models.map, i);
+    *mdl = &kh_val(&models.map, i);
     *name = kh_key(&models.map, i);
 
     return 0;
