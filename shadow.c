@@ -15,7 +15,7 @@ static void calc_lightmatrix()
     const float far = 1200.0f;
     const float boxsize = 500.0f;
     const float dist = -250.0f;
-    hmm_mat4 lightproject = HMM_Orthographic(-boxsize, boxsize, -boxsize, boxsize, near, far);
+    const hmm_mat4 lightproject = HMM_Orthographic(-boxsize, boxsize, -boxsize, boxsize, near, far);
     hmm_vec3 shadowstart = HMM_MultiplyVec3f(fi.dirlight.dir, dist);
     shadowstart = HMM_AddVec3(shadowstart, fi.cam.pos);
     hmm_mat4 lightview = HMM_LookAt(shadowstart, HMM_AddVec3(shadowstart, fi.dirlight.dir), HMM_Vec3(0.0f, 1.0f, 0.0f));
@@ -30,7 +30,7 @@ static sg_pipeline shadow_create_pipeline(int stride, bool cullfront, bool ibuf)
     return sg_make_pipeline(&(sg_pipeline_desc){
         .shader = fi.shadow.shd,
         .layout = {
-            .buffers[ATTR_vs_depth_apos] = {.stride = stride }, //8 * sizeof(float) },
+            .buffers[ATTR_vs_depth_apos] = {.stride = stride },
             .attrs[ATTR_vs_depth_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
         },
         .depth = {

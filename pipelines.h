@@ -5,7 +5,6 @@
 
 struct pipelines {
     sg_pipeline terrain;
-    sg_pipeline lightcube;
     sg_pipeline animodel;
     sg_pipeline animodel_shadow;
     sg_pipeline objmodel;

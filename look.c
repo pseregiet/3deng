@@ -238,17 +238,6 @@ static void do_update(double delta)
     particle_emiter_update(&gPE, &fi, smalldelta);
     particle_mngr_calc_buffers(petab, 1);
     particle_mngr_upload_vbuf();
-    //rotate static objects...very fucking static, lol
-    /*
-    static float rottt = 0.0f;
-    for (int i = 0; i < static_objs.count; ++i) {
-        static_objs.data[i].matrix = HMM_MultiplyMat4(static_objs.data[i].matrix,
-                (HMM_Rotate(HMM_ToRadians(rottt), HMM_Vec3(1.0f, 1.0f, 1.0f))));
-        rottt += 0.01;
-    }
-    if (rottt >= 360.f)
-        rottt=0.f;
-    */
 }
 
 static void do_render_static_objs(struct frameinfo *fi, double delta)
@@ -263,36 +252,7 @@ static void do_render_static_objs(struct frameinfo *fi, double delta)
         const struct obj_model *mdl = obj->om;
         objmodel_render(mdl, fi, obj->matrix);
     }
-
-    //simpleobj_hitbox_render(fi, munis->vp);
 }
-
-    /*
-static void do_render_lightcubes(struct frameinfo *fi, double delta, vs_params_t *munis)
-{
-    sg_apply_pipeline(fi->pipes.lightcube);
-    sg_apply_bindings(&fi->lightbind);
-    hmm_mat4 scale = HMM_Scale(HMM_Vec3(0.1, 0.1, 0.1));
-    for (int i = 0; i < 4; ++i) {
-
-        if (!fi->lightsenable[i])
-            continue;
-
-        hmm_vec3 pos = {
-            lightspos[i].X,
-            lightspos[i].Y,
-            lightspos[i].Z
-        };
-        hmm_mat4 model = HMM_Translate(pos);
-        model = HMM_MultiplyMat4(model, scale);
-        model = HMM_MultiplyMat4(munis->vp, model);
-        vs_paramsl_t lvs = {model};
-
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_params, &SG_RANGE(lvs));
-        sg_draw(0, 36, 1);
-    }
-}
-*/
 
 static void do_render_animat_objs(struct frameinfo *fi, double delta)
 {

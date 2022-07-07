@@ -41,7 +41,6 @@ FILE = \
     growing_allocator.c \
     heightmap.c \
     wirebox.c \
-    lightcube.c \
     look.c \
     md5anim.c \
     md5loader.c \
@@ -74,7 +73,7 @@ OBJS = $(patsubst %.c, $(OUTD)/%.o, $(FILE))
 $(info $$SHAD is [${SHAD}])
 $(info $$OBJS is [${OBJS}])
 
-engine : $(SHAD) $(OBJS)
+engine : $(OBJS)
 	$(CC) $(OPTS) $(OBJS) $(LIBS) -o engine
 
 $(OUTD)/gen%.h: shaders/%.glsl
@@ -83,7 +82,7 @@ $(OUTD)/gen%.h: shaders/%.glsl
 
 #shaders: $(SHAD)
 
-$(OUTD)/%.o : %.c
+$(OUTD)/%.o : %.c $(SHAD)
 	@mkdir -p $(@D)
 	$(CC) -c $(OPTS) $< -o $@
 
