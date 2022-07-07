@@ -14,7 +14,7 @@ static struct models {
     khash_t(modelmap) map;
 } models;
 
-#define MODELS_DEF_COUNT 10
+#define DEFAULT_OBJ_COUNT 16
 
 static int append_model(const char *fp, const char *name)
 {
@@ -95,8 +95,10 @@ int objloader_init()
 {
     assert(!growing_alloc_init(&models.names, 0, 1));
     kv_init(models.models);
-    kv_resize(struct obj_model, models.models, MODELS_DEF_COUNT);
-    //cube_index_buffer_init();
+    kv_resize(struct obj_model, models.models, DEFAULT_OBJ_COUNT);
+
+    memset(&models.map, 0, sizeof(models.map));
+    kh_resize(modelmap, &models.map, DEFAULT_OBJ_COUNT);
     return parse_json();
 }
 
@@ -109,7 +111,6 @@ void objloader_kill()
             objmodel_kill(obj);
     }
     kv_destroy(models.models);
-    //cube_index_buffer_kill();
 }
 
 int objloader_get(int idx, const char **name, const struct obj_model **mdl)

@@ -6,6 +6,9 @@
 #include <assert.h>
 #include <stdio.h>
 
+#define DEFAULT_MD5_MODEL_COUNT 128
+#define DEFAULT_MD5_ANIM_COUNT 128
+
 KHASH_MAP_INIT_STR(modelmap, struct md5_model)
 KHASH_MAP_INIT_STR(animmap, struct md5_anim)
 
@@ -162,6 +165,12 @@ int md5loader_init()
 {
     assert(!growing_alloc_init(&models.names, 0, 1));
     assert(!growing_alloc_init(&animations.names, 0, 1));
+
+    memset(&models.map, 0, sizeof(models.map));
+    memset(&animations.map, 0, sizeof(animations.map));
+
+    kh_resize(modelmap, &models.map, DEFAULT_MD5_MODEL_COUNT);
+    kh_resize(animmap, &animations.map, DEFAULT_MD5_ANIM_COUNT);
     return md5models_json();
 }
 

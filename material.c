@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <assert.h>
 
+#define DEFAULT_MATERIAL_COUNT 16
+
 KHASH_MAP_INIT_STR(matmap, struct material)
 
 static struct materials {
@@ -318,6 +320,9 @@ void material_init_dummy(struct material *mat)
 int material_mngr_init()
 {
     assert(!growing_alloc_init(&materials.names, 0, 1));
+
+    memset(&materials.map, 0, sizeof(materials.map));
+    kh_resize(matmap, &materials.map, DEFAULT_MATERIAL_COUNT);
     return material_mngr_json();
 }
 

@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+#define DEFAULT_PARTICLE_COUNT 16
+
 KHASH_MAP_INIT_STR(partimap, struct particle_base)
 
 static struct particles {
@@ -119,6 +121,9 @@ freejson:
 int particle_base_init()
 {
     assert(!growing_alloc_init(&particles.names, 0, 1));
+
+    memset(&particles.map, 0, sizeof(particles.map));
+    kh_resize(partimap, &particles.map, DEFAULT_PARTICLE_COUNT);
     return particle_base_json();
 }
 

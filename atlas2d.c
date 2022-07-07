@@ -8,6 +8,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+#define DEFAULT_ATLAS_COUNT 16
+
 KHASH_MAP_INIT_STR(atlasmap, struct atlas2d)
 
 static struct atlases {
@@ -242,6 +244,9 @@ int atlas2d_mngr_init()
     assert(!growing_alloc_init(&atlases.names, 0, 1));
     kv_init(atlases.bufs);
     kv_resize(sg_buffer, atlases.bufs, default_bufs_count);
+
+    memset(&atlases.map, 0, sizeof(atlases.map));
+    kh_resize(atlasmap, &atlases.map, DEFAULT_ATLAS_COUNT);
     return atlas2d_json();
 }
 
