@@ -3,24 +3,6 @@
 @ctype vec4 hmm_vec4
 @ctype mat4 hmm_mat4
 
-@vs vs_depth
-uniform vs_depthparams {
-    mat4 model;
-};
-in vec3 apos;
-
-void main() {
-    gl_Position = model * vec4(apos, 1.0);
-}
-@end
-
-@fs fs_depth
-void main() {
-}
-@end
-
-@program shddepth vs_depth fs_depth
-
 @vs vs_terrain
 in vec3 apos;
 in vec3 anorm;
@@ -34,7 +16,6 @@ out INTERFACE {
     vec3 tang_fragpos;
     vec4 fragpos_lightspace;
     vec3 normal;
-    //vec3 lightdir;
 } inter;
 
 uniform vs_params {
@@ -104,7 +85,7 @@ float shadowcalc(vec4 fragpos_ls) {
     vec2 mapuv = vec2(projcoords);
     
     //float bias = max(0.05 * (1.0 - dot(normal, lightdir)), 0.005);
-    float bias = 0.00;
+    float bias = 0.001;
 
     if (currdepth >= 1.0)
         return 0.0;
@@ -164,3 +145,20 @@ void main() {
 @end
 
 @program terrainshd vs_terrain fs_terrain
+
+@vs vs_terrain_depth
+uniform vs_terrain_depth {
+    mat4 umodel;
+};
+in vec3 apos;
+
+void main() {
+    gl_Position = umodel * vec4(apos, 1.0);
+}
+@end
+
+@fs fs_terrain_depth
+void main() {}
+@end
+
+@program shdterrain_depth vs_terrain_depth fs_terrain_depth

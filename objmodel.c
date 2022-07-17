@@ -3,7 +3,7 @@
 #include "objmodel.h"
 #include "fileops.h"
 #include "extrahmm.h"
-#include "genshd_combo.h"
+#include "genshd_obj.h"
 
 #define OBJ_MAGIC (0x1234567)
 
@@ -197,6 +197,26 @@ void objmodel_pipeline(struct pipelines *pipes)
     });
 }
 
+void objmodel_shadow_pipeline(struct pipelines *pipes)
+{
+    pipes->objmodel_shadow_shd = sg_make_shader(shdobj_depth_shader_desc(SG_BACKEND_GLCORE33));
+
+    pipes->objmodel_shadow = sg_make_pipeline(&(sg_pipeline_desc){
+        .shader = pipes->objmodel_shadow_shd,
+        .layout = {
+            .buffers[ATTR_vs_obj_depth_apos] = {.stride = 11 * sizeof(float) },
+            .attrs[ATTR_vs_obj_depth_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
+        },
+        .depth = {
+            .pixel_format = SG_PIXELFORMAT_DEPTH,
+            .compare = SG_COMPAREFUNC_LESS_EQUAL,
+            .write_enabled = true,
+        },
+        .cull_mode = SG_CULLMODE_FRONT,
+        .index_type = SG_INDEXTYPE_UINT16,
+    });
+}
+
 static inline float bits2float(const bool *bits)
 {
     uint32_t in = 0;
@@ -238,8 +258,8 @@ void objmodel_fraguniforms_slow(struct frameinfo *fi)
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_obj_pointlights, &SG_RANGE(fs_pointlights));
 
     fs_obj_spotlight_t fs_spotlight = {
-        .cutoff =       fi->spotlight.cutoff, //HMM_COSF(HMM_ToRadians(12.5f)),
-        .outcutoff =    fi->spotlight.outcutoff, //HMM_COSF(HMM_ToRadians(15.0f)),
+        .cutoff =       fi->spotlight.cutoff,
+        .outcutoff =    fi->spotlight.outcutoff,
         .atte =         fi->spotlight.atte,
         .ambi =         fi->spotlight.ambi,
         .diff =         fi->spotlight.diff,
@@ -284,5 +304,22 @@ void objmodel_render(const struct obj_model *mdl, struct frameinfo *fi, hmm_mat4
         .fs_images[SLOT_imgnorm] = mdl->material.imgs[MAT_NORM],
     };
     sg_apply_bindings(&bind);
+    sg_draw(0, mdl->icount, 1);
+}
+
+void objmodel_shadow_render(const struct obj_model *mdl, struct frameinfo *fi, hmm_mat4 model)
+{
+
+    sg_bindings bind = {
+        .vertex_buffers[0] = mdl->vbuf,
+        .index_buffer = mdl->ibuf,
+    };
+    sg_apply_bindings(&bind);
+
+    vs_obj_depth_t uni = {
+        .umodel = HMM_MultiplyMat4(fi->shadowmap.lightspace_dir, model),
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(uni));
+
     sg_draw(0, mdl->icount, 1);
 }

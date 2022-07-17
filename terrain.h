@@ -5,9 +5,11 @@
 
 int init_terrain();
 void terrain_pipeline(struct pipelines *pipes);
+void terrain_shadow_pipeline(struct pipelines *pipes);
 
 void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         hmm_vec3 lightpos, hmm_vec3 viewpos, hmm_mat4 lightmatrix);
 void terrain_set_shadowmap(sg_image shadowmap);
+void terrain_shadow_render(struct frameinfo *fi);
 
 #endif

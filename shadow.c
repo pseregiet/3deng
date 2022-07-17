@@ -5,11 +5,11 @@
 #include "event.h"
 #include "animodel.h"
 #include "animatmapobj.h"
-#include "genshd_terrain.h"
+#include "terrain.h"
 
 extern struct frameinfo fi;
 
-static void calc_lightmatrix()
+static void calc_lightmatrix_dir()
 {
     const float near = 0.01f;
     const float far = 1200.0f;
@@ -19,116 +19,111 @@ static void calc_lightmatrix()
     hmm_vec3 shadowstart = HMM_MultiplyVec3f(fi.dirlight.dir, dist);
     shadowstart = HMM_AddVec3(shadowstart, fi.cam.pos);
     hmm_mat4 lightview = HMM_LookAt(shadowstart, HMM_AddVec3(shadowstart, fi.dirlight.dir), HMM_Vec3(0.0f, 1.0f, 0.0f));
-    fi.shadow.lightspace = HMM_MultiplyMat4(lightproject, lightview);
-}
-
-static sg_pipeline shadow_create_pipeline(int stride, bool cullfront, bool ibuf)
-{
-    int cull = cullfront ? SG_CULLMODE_FRONT : SG_CULLMODE_BACK;
-    int imode = ibuf ? SG_INDEXTYPE_UINT16 : SG_INDEXTYPE_NONE;
-
-    return sg_make_pipeline(&(sg_pipeline_desc){
-        .shader = fi.shadow.shd,
-        .layout = {
-            .buffers[ATTR_vs_depth_apos] = {.stride = stride },
-            .attrs[ATTR_vs_depth_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
-        },
-        .depth = {
-            .pixel_format = SG_PIXELFORMAT_DEPTH,
-            .compare = SG_COMPAREFUNC_LESS_EQUAL,
-            .write_enabled = true,
-        },
-        .cull_mode = cull,
-        .index_type = imode,
-    });
+    fi.shadowmap.lightspace_dir = HMM_MultiplyMat4(lightproject, lightview);
 }
 
 int shadowmap_init()
 {
     sg_image_desc imgdesc = {
+        .type = SG_IMAGETYPE_2D,
         .render_target = true,
-        .width = 2048,
-        .height = 2048,
+        .width = fi.shadowmap_resolution,
+        .height = fi.shadowmap_resolution,
         .pixel_format = SG_PIXELFORMAT_RGBA8,
         .min_filter = SG_FILTER_NEAREST,
         .mag_filter = SG_FILTER_NEAREST,
         .wrap_u = SG_WRAP_CLAMP_TO_BORDER,
         .wrap_v = SG_WRAP_CLAMP_TO_BORDER,
+        /*.wrap_w = SG_WRAP_CLAMP_TO_EDGE,*/
         .border_color = SG_BORDERCOLOR_OPAQUE_WHITE,
         .sample_count = 1,
     };
 
-    fi.shadow.colormap = sg_make_image(&imgdesc);    
+    //TODO? sokol limitation: shadow shader still needs a color attachment even if unused.
+    //Create one image to be used for all shadow maps
+    fi.shadowmap.colormap = sg_make_image(&imgdesc);
+
+    // pointlights need a cubemap, color one too...
+    imgdesc.type = SG_IMAGETYPE_CUBE;
+    fi.shadowmap.colormap_cube = sg_make_image(&imgdesc);
+    
     imgdesc.pixel_format = SG_PIXELFORMAT_DEPTH;
-    fi.shadow.depthmap = sg_make_image(&imgdesc);
+    for (int i = 0; i < DEFAULT_POINTLIGHT_COUNT; ++i)
+        fi.shadowmap.depthmap_point[i] = sg_make_image(&imgdesc);
 
+    imgdesc.type = SG_IMAGETYPE_2D;
+    fi.shadowmap.depthmap_dir = sg_make_image(&imgdesc);
+    fi.shadowmap.depthmap_spot = sg_make_image(&imgdesc);
 
-    fi.shadow.shd = sg_make_shader(shddepth_shader_desc(SG_BACKEND_GLCORE33));
-    fi.shadow.pip = shadow_create_pipeline((11 * sizeof(float)), false, true);
-    fi.shadow.tpip = shadow_create_pipeline((11 * sizeof(float)), true, true);
-    fi.shadow.act = (sg_pass_action){
-        0
-        //.colors[0] = { .action = SG_ACTION_CLEAR, .value = {1.0f, 1.0f, 1.0f, 1.0f } },
-    };
-    fi.shadow.pass = sg_make_pass(&(sg_pass_desc) {
-        .color_attachments[0].image = fi.shadow.colormap,
-        .depth_stencil_attachment.image = fi.shadow.depthmap,
+    fi.shadowmap.pass_dir = sg_make_pass(&(sg_pass_desc) {
+        .color_attachments[0].image = fi.shadowmap.colormap,
+        .depth_stencil_attachment.image = fi.shadowmap.depthmap_dir,
     });
+
+    fi.shadowmap.pass_spot = sg_make_pass(&(sg_pass_desc) {
+        .color_attachments[0].image = fi.shadowmap.colormap,
+        .depth_stencil_attachment.image = fi.shadowmap.depthmap_spot,
+    });
+
+    for (int l = 0; l < DEFAULT_POINTLIGHT_COUNT; ++l) {
+        for (int i = 0; i < 6; ++i) {
+            fi.shadowmap.pass_point[l * 6 + i] = sg_make_pass(&(sg_pass_desc) {
+                .color_attachments[0] = {
+                    .image = fi.shadowmap.colormap_cube,
+                    .slice = i,
+                },
+                .depth_stencil_attachment = {
+                    .image = fi.shadowmap.depthmap_point[l],
+                    .slice = i,
+                },
+            });
+        }
+    }
 
     return 0;
 }
 
 void shadowmap_kill()
 {
-    sg_destroy_pipeline(fi.shadow.pip);
-    sg_destroy_pipeline(fi.shadow.tpip);
-    sg_destroy_shader(fi.shadow.shd);
-    sg_destroy_image(fi.shadow.colormap);
-    sg_destroy_image(fi.shadow.depthmap);
-    sg_destroy_pass(fi.shadow.pass);
+    sg_destroy_image(fi.shadowmap.colormap);
+    sg_destroy_image(fi.shadowmap.colormap_cube);
+    sg_destroy_image(fi.shadowmap.depthmap_dir);
+    sg_destroy_image(fi.shadowmap.depthmap_spot);
+    for (int i = 0; i < DEFAULT_POINTLIGHT_COUNT; ++i)
+        sg_destroy_image(fi.shadowmap.depthmap_point[i]);
+
+    sg_destroy_pass(fi.shadowmap.pass_dir);
+    sg_destroy_pass(fi.shadowmap.pass_spot);
+    for (int i = 0; i < DEFAULT_POINTLIGHT_COUNT * 6; ++i)
+        sg_destroy_pass(fi.shadowmap.pass_point[i]);
 }
 
 
 void shadowmap_draw()
 {
-    calc_lightmatrix();
-    sg_begin_pass(fi.shadow.pass, &fi.shadow.act);
-    sg_apply_pipeline(fi.shadow.tpip);
-    
-    vs_depthparams_t unis;
+    calc_lightmatrix_dir();
 
-    int i = 0;
-    for (int y = 0; y < fi.map.h; ++y) {
-        for (int x = 0; x < fi.map.w; ++x) {
-            fi.shadow.tbind.vertex_buffers[0] = fi.map.vbuffers[i];
-            fi.shadow.tbind.index_buffer = fi.map.ibuffers[i++];
-            
-            unis.model = HMM_Translate(HMM_Vec3(fi.map.scale * x, 0.0f, fi.map.scale * y));
-            unis.model = HMM_MultiplyMat4(fi.shadow.lightspace, unis.model);
-            
-            sg_apply_bindings(&fi.shadow.tbind);
-            
-            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_depthparams, &SG_RANGE(unis));
-            sg_draw(0, 128*128*6, 1);
-        }
+    sg_pass_action action = {0};
+    sg_begin_pass(fi.shadowmap.pass_dir, &action);
+
+    // terrain shadows
+    sg_apply_pipeline(fi.pipes.terrain_shadow);
+    {
+    terrain_shadow_render(&fi);
     }
 
-    sg_apply_pipeline(fi.shadow.pip);
+    // objmodel shadows
+    sg_apply_pipeline(fi.pipes.objmodel_shadow);
     {
     const int end = staticmapobj_mngr_end();
     for (int i = 0; i < end; ++i) {
         struct staticmapobj *obj = staticmapobj_get(i);
         const struct obj_model *mdl = obj->om;
-        fi.shadow.mbind.vertex_buffers[0] = mdl->vbuf;
-        fi.shadow.mbind.index_buffer = mdl->ibuf;
-        sg_apply_bindings(&fi.shadow.mbind);
-        
-        unis.model = HMM_MultiplyMat4(fi.shadow.lightspace, obj->matrix);
-        sg_apply_uniforms(SG_SHADERSTAGE_VS, 0, &SG_RANGE(unis));
-        sg_draw(0, mdl->vcount, 1);
+        objmodel_shadow_render(mdl, &fi, obj->matrix);
     }
     }
 
+    // md5model shadows
     sg_apply_pipeline(fi.pipes.animodel_shadow);
     {
     const int end = animatmapobj_mngr_end();

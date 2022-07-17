@@ -10,6 +10,8 @@ struct pipelines {
     sg_pipeline objmodel;
     sg_pipeline particle;
     sg_pipeline wirebox;
+    sg_pipeline objmodel_shadow;
+    sg_pipeline terrain_shadow;
 
     sg_shader terrain_shd;
     sg_shader lightcube_shd;
@@ -18,6 +20,8 @@ struct pipelines {
     sg_shader objmodel_shd;
     sg_shader particle_shd;
     sg_shader wirebox_shd;
+    sg_shader objmodel_shadow_shd;
+    sg_shader terrain_shadow_shd;
 };
 
 int pipelines_init(struct pipelines *pipes);

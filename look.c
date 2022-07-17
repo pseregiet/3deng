@@ -28,7 +28,6 @@
 #include "material.h"
 #include "atlas2d.h"
 #include "particle_mngr.h"
-#include "genshd_combo.h"
 #include "sdl2_imgui.h"
 
 #define u16 uint16_t
@@ -105,6 +104,7 @@ struct frameinfo fi = {
         //.outcutoff;
     },
     .draw_bbox = false,
+    .shadowmap_resolution = 2048,
 };
 
 static void sdl_video_driver()
@@ -293,7 +293,7 @@ static void do_render(struct frameinfo *fi, double delta)
     fi->projection = projection;
     fi->view = view;
 
-    draw_terrain(fi, vp, fi->dirlight.dir, fi->cam.pos, fi->shadow.lightspace);
+    draw_terrain(fi, vp, fi->dirlight.dir, fi->cam.pos, fi->shadowmap.lightspace_dir);
  
     do_render_static_objs(fi, delta);
     //do_render_lightcubes(fi, delta, &munis);
@@ -378,66 +378,11 @@ int main(int argc, char **argv)
 
     particle_emiter_init(&gPE, HMM_Vec3(0.0, 0.0, 0.0), "coin1");
 
-    float vertices[36*3] =
-    {
-        -0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f, 
-        0.5f,  0.5f, -0.5f, 
-        0.5f,  0.5f, -0.5f, 
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-
-        -0.5f, -0.5f,  0.5f,
-        0.5f, -0.5f,  0.5f, 
-        0.5f,  0.5f,  0.5f, 
-        0.5f,  0.5f,  0.5f, 
-        -0.5f,  0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
-
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-
-        0.5f,  0.5f,  0.5f, 
-        0.5f,  0.5f, -0.5f, 
-        0.5f, -0.5f, -0.5f, 
-        0.5f, -0.5f, -0.5f, 
-        0.5f, -0.5f,  0.5f, 
-        0.5f,  0.5f,  0.5f, 
-
-        -0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f, 
-        0.5f, -0.5f,  0.5f, 
-        0.5f, -0.5f,  0.5f, 
-        -0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f, -0.5f,
-
-        -0.5f,  0.5f, -0.5f,
-        0.5f,  0.5f, -0.5f, 
-        0.5f,  0.5f,  0.5f, 
-        0.5f,  0.5f,  0.5f, 
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
-
-    };
-
-    sg_buffer lvbuf = sg_make_buffer(&(sg_buffer_desc) {
-        .data.size = sizeof(vertices),
-        .data.ptr = vertices,
-    });
-    
-    fi.lightbind = (sg_bindings){
-        .vertex_buffers[0] = lvbuf,
-    };
-
     fi.pass_action = (sg_pass_action){
         .colors[0] = {.action = SG_ACTION_CLEAR, .value = {0.5, 0.5, 0.5, 1.0 }},
     };
 
-    terrain_set_shadowmap(fi.shadow.depthmap);
+    terrain_set_shadowmap(fi.shadowmap.depthmap_dir);
 
     double init_done = (double)(SDL_GetTicks() - init_start);
     printf("%.3fs init\n", init_done / 1000.0f);

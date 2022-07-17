@@ -3,11 +3,12 @@
 
 #include "sokolgl.h"
 #include "hmm.h"
+#include "pipelines.h"
 
-void shadowmap_draw();
 int  shadowmap_init();
 void shadowmap_kill();
-//sg_pipeline shadow_create_pipeline(int stride, bool cullfront, bool ibuf);
+void shadowmap_draw();
+void shadow_pipeline(struct pipelines *pipes);
 
 #endif
 

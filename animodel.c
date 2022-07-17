@@ -294,7 +294,7 @@ void animodel_shadow_render(struct animodel *am, struct frameinfo *fi, hmm_mat4 
         sg_apply_bindings(&bind);
 
         vs_md5_depth_t univs = {
-            .umodel = HMM_MultiplyMat4(fi->shadow.lightspace, model),
+            .umodel = HMM_MultiplyMat4(fi->shadowmap.lightspace_dir, model),
             .uboneuv = {
                 am->boneuv[0],
                 am->boneuv[1],

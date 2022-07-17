@@ -62,7 +62,7 @@ FILE = \
     particle.c \
 
 GLSL = \
-	shd_combo.glsl \
+	shd_obj.glsl \
 	shd_terrain.glsl \
 	shd_wirebox.glsl \
 	shd_md5.glsl \
@@ -73,7 +73,7 @@ OBJS = $(patsubst %.c, $(OUTD)/%.o, $(FILE))
 $(info $$SHAD is [${SHAD}])
 $(info $$OBJS is [${OBJS}])
 
-engine : $(OBJS)
+engine : $(OBJS) $(SHAD)
 	$(CC) $(OPTS) $(OBJS) $(LIBS) -o engine
 
 $(OUTD)/gen%.h: shaders/%.glsl

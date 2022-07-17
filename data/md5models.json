@@ -9,6 +9,7 @@
     {
         "model": "people/tshirt",
         "anims": [
+            "people/tshirt/walk_treadmill",
             "people/tshirt/walk_normal"
         ]
     }

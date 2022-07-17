@@ -42,6 +42,26 @@ void terrain_pipeline(struct pipelines *pipes)
     });
 }
 
+void terrain_shadow_pipeline(struct pipelines *pipes)
+{
+    pipes->terrain_shadow_shd = sg_make_shader(shdterrain_depth_shader_desc(SG_BACKEND_GLCORE33));
+
+    pipes->terrain_shadow = sg_make_pipeline(&(sg_pipeline_desc){
+        .shader = pipes->terrain_shadow_shd,
+        .layout = {
+            .buffers[ATTR_vs_terrain_depth_apos] = {.stride = 11 * sizeof(float) },
+            .attrs[ATTR_vs_terrain_depth_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
+        },
+        .depth = {
+            .pixel_format = SG_PIXELFORMAT_DEPTH,
+            .compare = SG_COMPAREFUNC_LESS_EQUAL,
+            .write_enabled = true,
+        },
+        .cull_mode = SG_CULLMODE_BACK,
+        .index_type = SG_INDEXTYPE_UINT16,
+    });
+}
+
 int init_terrain()
 {
     struct material *mat = material_mngr_find("terrain");
@@ -96,7 +116,7 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
         .uambi = fi->dirlight.ambi,
         .udiff = fi->dirlight.diff,
         .uspec = fi->dirlight.spec,
-        .shadowmap_size = HMM_Vec2(2048.0f, 2048.0f),
+        .shadowmap_size = HMM_Vec2((float)fi->shadowmap_resolution, (float)fi->shadowmap_resolution),
     };
 
     int idx = 0;
@@ -118,3 +138,22 @@ void draw_terrain(struct frameinfo *fi, hmm_mat4 vp,
     }
 }
 
+void terrain_shadow_render(struct frameinfo *fi)
+{
+    int i = 0;
+    for (int y = 0; y < fi->map.h; ++y) {
+        for (int x = 0; x < fi->map.w; ++x) {
+            sg_bindings bind = {
+                .vertex_buffers[0] = fi->map.vbuffers[i],
+                .index_buffer = fi->map.ibuffers[i++],
+            };
+            sg_apply_bindings(&bind);
+
+            vs_terrain_depth_t uni;
+            uni.umodel = HMM_Translate(HMM_Vec3(fi->map.scale * x, 0.0f, fi->map.scale * y));
+            uni.umodel = HMM_MultiplyMat4(fi->shadowmap.lightspace_dir, uni.umodel);
+            sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_terrain_depth, &SG_RANGE(uni));
+            sg_draw(0, 128*128*6, 1);
+        }
+    }
+}

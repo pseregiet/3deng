@@ -5,7 +5,7 @@
 #include "frameinfo.h"
 #include "objloader.h"
 #include "staticmapobj.h"
-#include "genshd_combo.h"
+//#include "genshd_combo.h"
 
 extern struct frameinfo fi;
 

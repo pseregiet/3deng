@@ -7,6 +7,8 @@
 #include "camera.h"
 #include <stdbool.h>
 
+#define DEFAULT_POINTLIGHT_COUNT 4
+
 enum videodriver {
     VD_NONE,
     VD_X11,
@@ -40,29 +42,35 @@ struct spotlight {
     float outcutoff;
 };
 
+struct shadowmap {
+    hmm_mat4 lightspace_dir;
+    hmm_mat4 lightspace_spot;
+    hmm_mat4 lightspace_point[DEFAULT_POINTLIGHT_COUNT];
+
+    sg_image colormap;
+    sg_image colormap_cube;
+    sg_image depthmap_dir;
+    sg_image depthmap_spot;
+    sg_image depthmap_point[DEFAULT_POINTLIGHT_COUNT];
+    sg_pass  pass_dir;
+    sg_pass  pass_spot;
+    sg_pass  pass_point[6 * DEFAULT_POINTLIGHT_COUNT];
+};
+
 struct frameinfo {
     struct worldmap map;
     struct pipelines pipes;
     struct camera cam;
-    struct shadow {
-        sg_shader shd;
-        sg_bindings tbind;
-        sg_bindings mbind;
-        sg_pipeline tpip;
-        sg_pipeline pip;
-        sg_pass pass;
-        sg_pass_action act;
-        sg_image colormap;
-        sg_image depthmap;
-        hmm_mat4 lightspace;
-    } shadow;
-    struct pointlight pointlight[4];
+    struct shadowmap shadowmap;
+    struct pointlight pointlight[DEFAULT_POINTLIGHT_COUNT];
     struct dirlight dirlight;
     struct spotlight spotlight;
 
     hmm_mat4 projection;
     hmm_mat4 view;
     hmm_mat4 vp;
+
+    int shadowmap_resolution;
 
     sg_bindings lightbind;
     sg_bindings terrainbind[4];

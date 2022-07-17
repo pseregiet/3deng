@@ -123,25 +123,20 @@ void main() {
 
 @program shdobj vs_obj fs_obj
 
-
-@vs light_cube_vs
-in vec3 pos;
-
-uniform vs_paramsl {
-    mat4 mvp;
+@vs vs_obj_depth
+uniform vs_obj_depth {
+    mat4 umodel;
 };
+in vec3 apos;
 
 void main() {
-    gl_Position = mvp * vec4(pos, 1.0);
+    gl_Position = umodel * vec4(apos, 1.0);
 }
 @end
 
-@fs light_cube_fs
-out vec4 frag;
-
-void main() {
-    frag = vec4(1.0, 1.0, 1.0, 1.0);
-}
+@fs fs_obj_depth
+void main() {}
 @end
 
-@program light_cube light_cube_vs light_cube_fs
+@program shdobj_depth vs_obj_depth fs_obj_depth
+
