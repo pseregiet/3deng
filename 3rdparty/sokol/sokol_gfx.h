@@ -6964,8 +6964,18 @@ _SOKOL_PRIVATE sg_resource_state _sg_gl_create_pass(_sg_pass_t* pass, _sg_image_
         if (_sg.gl.ext_depth_read) {
             const GLuint gl_depth_tex = pass->gl.ds_att.image->gl.tex[0];
             SOKOL_ASSERT(gl_depth_tex);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gl_depth_tex, 0);
-             if (_sg_is_depth_stencil_format(pass->gl.ds_att.image->cmn.pixel_format)) {
+            switch (pass->gl.ds_att.image->cmn.type) {
+                case SG_IMAGETYPE_2D:
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gl_depth_tex, 0);
+                    break;
+                case SG_IMAGETYPE_CUBE:
+                    const GLenum slice = _sg_gl_cubeface_target(pass->cmn.ds_att.slice);
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, slice, gl_depth_tex, 0);
+                    break;
+                default:
+                    break;
+            }
+            if (_sg_is_depth_stencil_format(pass->gl.ds_att.image->cmn.pixel_format)) {
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, gl_depth_tex, 0);
             }
         }
