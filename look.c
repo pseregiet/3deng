@@ -48,6 +48,22 @@ bool playanim = true;
 
 struct particle_emiter gPE = {0};
 
+hmm_vec3 light_attenuation[12] = {
+/* Range Constant Linear  Quadratic*/
+/*7,    */{1.0f,    0.7f,    1.8f},
+/*13,   */{1.0f,    0.35f,   0.44f},
+/*20,   */{1.0f,    0.22f,   0.20f},
+/*32,   */{1.0f,    0.14f,   0.07f},
+/*50,   */{1.0f,    0.09f,   0.032f},
+/*65,   */{1.0f,    0.07f,   0.017f},
+/*100,  */{1.0f,    0.045f,  0.0075f},
+/*160,  */{1.0f,    0.027f,  0.0028f},
+/*200,  */{1.0f,    0.022f,  0.0019f},
+/*325,  */{1.0f,    0.014f,  0.0007f},
+/*600,  */{1.0f,    0.007f,  0.0002f},
+/*3250, */{1.0f,    0.0014f, 0.000007f},
+};
+
 struct frameinfo fi = {
     .cam = (struct camera) {
         .yaw = -90.f,
@@ -106,6 +122,30 @@ struct frameinfo fi = {
     .draw_bbox = false,
     .shadowmap_resolution = 2048,
 };
+
+static void frameinfo_save(const struct frameinfo *fi)
+{
+    FILE *f = fopen("frameinfo.sav", "wb");
+    if (!f) {
+        printf("Couldn't open frameinfo.sav for writing\n");
+        return;
+    }
+
+    fwrite(fi, 1, sizeof(*fi), f);
+    fclose(f);
+}
+
+static void frameinfo_load(struct frameinfo *fi)
+{
+    FILE *f = fopen("frameinfo.sav", "rb");
+    if (!f) {
+        printf("Couldn't open frameinfo.sav for reading\n");
+        return;
+    }
+
+    fread(fi, 1, sizeof(*fi), f);
+    fclose(f);
+}
 
 static void sdl_video_driver()
 {
@@ -187,12 +227,34 @@ static void do_imgui_frame(int w, int h, double delta)
     if (igCheckbox("Light enable4", &fi.lightsenable[3]))
         fi.pointlight[3].pos = fi.cam.pos;
 
+    {
+    static int la1;
+    static int la2;
+    static int la3;
+    static int la4;
+    igSliderInt("Light 1 attenuation", &la1, 0, 11, 0, 0);
+    igSliderInt("Light 2 attenuation", &la2, 0, 11, 0, 0);
+    igSliderInt("Light 3 attenuation", &la3, 0, 11, 0, 0);
+    igSliderInt("Light 4 attenuation", &la4, 0, 11, 0, 0);
+
+    fi.pointlight[0].atte = light_attenuation[la1];
+    fi.pointlight[1].atte = light_attenuation[la2];
+    fi.pointlight[2].atte = light_attenuation[la3];
+    fi.pointlight[3].atte = light_attenuation[la4];
+    }
+
     igCheckbox("Enable anims", &playanim);
     igCheckbox("Draw bboxes", &fi.draw_bbox);
 
     if (igButton("Set lightdir", (ImVec2) {100.0f, 30.0f})) {
         fi.dirlight.dir = fi.cam.front;
     }
+
+    if (igButton("Save frameinfo", (ImVec2) {120.0f, 30.0f}))
+        frameinfo_save(&fi);
+
+    if (igButton("Load frameinfo", (ImVec2) {120.0f, 30.0f}))
+        frameinfo_load(&fi);
 
 
     igText("App average %.3f ms/frame (%.1f FPS)", delta, 1000.0f / delta);
@@ -386,6 +448,8 @@ int main(int argc, char **argv)
 
     double init_done = (double)(SDL_GetTicks() - init_start);
     printf("%.3fs init\n", init_done / 1000.0f);
+
+    frameinfo_load(&fi);
 
     uint64_t now = SDL_GetPerformanceCounter();
     uint64_t last = 0;
