@@ -40,16 +40,16 @@ static void calc_tangents(struct vertex *vbuf, uint16_t *ibuf, int indecount)
 {
     for (int i = 0; i < indecount; i +=3) {
         const uint16_t idx[3] = {ibuf[i+0], ibuf[i+1], ibuf[i+2]};
-        hmm_vec3 v0 = vbuf[idx[0]].pos;
-        hmm_vec3 v1 = vbuf[idx[1]].pos;
-        hmm_vec3 v2 = vbuf[idx[2]].pos;
+        const hmm_vec3 v0 = vbuf[idx[0]].pos;
+        const hmm_vec3 v1 = vbuf[idx[1]].pos;
+        const hmm_vec3 v2 = vbuf[idx[2]].pos;
 
-        hmm_vec2 uv0 = vbuf[idx[0]].uv;
-        hmm_vec2 uv1 = vbuf[idx[1]].uv;
-        hmm_vec2 uv2 = vbuf[idx[2]].uv;
+        const hmm_vec2 uv0 = vbuf[idx[0]].uv;
+        const hmm_vec2 uv1 = vbuf[idx[1]].uv;
+        const hmm_vec2 uv2 = vbuf[idx[2]].uv;
 
-        hmm_vec3 t0 = HMM_NormalizeVec3(
-                get_tangent(&v0, &v1, &v2, &uv0, &uv1, &uv2));
+        const hmm_vec3 t0 = HMM_NormalizeVec3(
+                get_tangent(v0, v1, v2, uv0, uv1, uv2));
         vbuf[idx[0]].tan = t0;
         vbuf[idx[1]].tan = t0;
         vbuf[idx[2]].tan = t0;

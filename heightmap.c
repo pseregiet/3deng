@@ -14,30 +14,30 @@ inline static float get_height(uint16_t pixel)
 
 static hmm_vec3 get_normal(uint16_t *gfx, int x, int y, int w, int h)
 {
-    float hl = get_height(gfx[ ((y+0)*w) + x-1 ]);
-    float hr = get_height(gfx[ ((y+0)*w) + x+1 ]);
-    float hd = get_height(gfx[ ((y-1)*w) + x-0 ]);
-    float hu = get_height(gfx[ ((y+1)*w) + x-0 ]);
+    const float hl = get_height(gfx[ ((y+0)*w) + x-1 ]);
+    const float hr = get_height(gfx[ ((y+0)*w) + x+1 ]);
+    const float hd = get_height(gfx[ ((y-1)*w) + x-0 ]);
+    const float hu = get_height(gfx[ ((y+1)*w) + x-0 ]);
 
-    hmm_vec3 v3 = {hl-hr, 2.0f, hd-hu};
+    const hmm_vec3 v3 = {hl-hr, 2.0f, hd-hu};
     return HMM_NormalizeVec3(v3);
 }
 
 static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, uint16_t *indices)
 {
     int vptr = 0;
-    float vsize = (float)(129 - 1);
+    const float vsize = (float)(129 - 1);
     
-    int indices_size = 6 * (129-1) * (129-1);
+    const int indices_size = 6 * (129-1) * (129-1);
 
-    float offsetx = scale;
-    float offsety = scale;
+    const float offsetx = scale;
+    const float offsety = scale;
 
     for (int y = 0; y < 129; ++y) {
-        uint16_t *ptr = &gfx[stride * (y+1)];
+        const uint16_t *ptr = &gfx[stride * (y+1)];
         for (int x = 0; x < 129; ++x) {
-            uint16_t pixel = ptr[x+1];
-            hmm_vec3 normal = get_normal(gfx, x+1, y+1, 131, 131);
+            const uint16_t pixel = ptr[x+1];
+            const hmm_vec3 normal = get_normal(gfx, x+1, y+1, 131, 131);
 
             //vertices
             verts[vptr * 11 + 0] = ((float)x / vsize) * offsetx;
@@ -65,10 +65,10 @@ static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, 
 
     for (int y = 0; y < 129-1; ++y) {
         for (int x = 0; x < 129-1; ++x) {
-            int tl = (y * 129) + x;
-            int tr = tl + 1;
-            int bl = (y+1) * 129 + x;
-            int br = bl + 1;
+            const int tl = (y * 129) + x;
+            const int tr = tl + 1;
+            const int bl = (y+1) * 129 + x;
+            const int br = bl + 1;
 
             indices[vptr++] = tl;
             indices[vptr++] = tr;
@@ -81,19 +81,19 @@ static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, 
     }
 
     for (int i = 0; i < indices_size; i+=3) {
-            int i0 = indices[i+0];
-            int i1 = indices[i+1];
-            int i2 = indices[i+2];
+            const int i0 = indices[i+0];
+            const int i1 = indices[i+1];
+            const int i2 = indices[i+2];
 
-            hmm_vec3 *v0pos = (hmm_vec3 *)&verts[i0 * 11 + 0];
-            hmm_vec3 *v1pos = (hmm_vec3 *)&verts[i1 * 11 + 0];
-            hmm_vec3 *v2pos = (hmm_vec3 *)&verts[i2 * 11 + 0];
+            const hmm_vec3 *v0pos = (hmm_vec3 *)&verts[i0 * 11 + 0];
+            const hmm_vec3 *v1pos = (hmm_vec3 *)&verts[i1 * 11 + 0];
+            const hmm_vec3 *v2pos = (hmm_vec3 *)&verts[i2 * 11 + 0];
 
-            hmm_vec2 *v0uv = (hmm_vec2 *)&verts[i0 * 11 + 6];
-            hmm_vec2 *v1uv = (hmm_vec2 *)&verts[i1 * 11 + 6];
-            hmm_vec2 *v2uv = (hmm_vec2 *)&verts[i2 * 11 + 6];
+            const hmm_vec2 *v0uv = (hmm_vec2 *)&verts[i0 * 11 + 6];
+            const hmm_vec2 *v1uv = (hmm_vec2 *)&verts[i1 * 11 + 6];
+            const hmm_vec2 *v2uv = (hmm_vec2 *)&verts[i2 * 11 + 6];
 
-            hmm_vec3 t0 = get_tangent(v0pos, v1pos, v2pos, v0uv, v1uv, v2uv);
+            const hmm_vec3 t0 = get_tangent(*v0pos, *v1pos, *v2pos, *v0uv, *v1uv, *v2uv);
 
             verts[i0 * 11 +  8] = t0.X; verts[i0 * 11 +  9] = t0.Y; verts[i0 * 11 + 10] = t0.Z;
             verts[i1 * 11 +  8] = t0.X; verts[i1 * 11 +  9] = t0.Y; verts[i1 * 11 + 10] = t0.Z;

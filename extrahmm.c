@@ -12,18 +12,38 @@ hmm_mat4 calc_matrix(hmm_vec3 pos, hmm_vec4 rotation, hmm_vec3 scale)
     return HMM_MultiplyMat4(tmp, s);
 }
 
-hmm_vec3 get_tangent(hmm_vec3 *v0pos, hmm_vec3 *v1pos, hmm_vec3 *v2pos,
-        hmm_vec2 *v0uv, hmm_vec2 *v1uv, hmm_vec2 *v2uv) {
+hmm_vec3 get_tangent(const hmm_vec3 v0pos, const hmm_vec3 v1pos, const hmm_vec3 v2pos,
+        const hmm_vec2 v0uv, const hmm_vec2 v1uv, const hmm_vec2 v2uv) {
 
-    hmm_vec3 edge0 = HMM_SubtractVec3(*v1pos, *v0pos);
-    hmm_vec3 edge1 = HMM_SubtractVec3(*v2pos, *v0pos);
-    hmm_vec2 delta_uv0 = HMM_SubtractVec2(*v1uv, *v0uv);
-    hmm_vec2 delta_uv1 = HMM_SubtractVec2(*v2uv, *v0uv);
+    /*if the UV coords are the same their difference will be 0 which will cause a divide by zero
+     * in the calculation of f. Not sure how to fix this bug yet and wether it's something to
+     * worry about in real models. This breaks the weird 'trump' model I had from online. it was
+     * using tiny texture with just few pixels of different colors so most of vertices had the same UV.
+     * because all the calculations would go bad the model was mostly rendered black. Putting an if here
+     * like this:
+     *
+     * if (delta_uv0.X == 0.0f && delta_uv0.Y == 0.0f &&
+     *     delta_uv1.X == 0.0f && delta_uv1.Y == 0.0f) {
+     *  
+     *      delta_uv0 = HMM_Vec2(xxx, yyy);
+     *      delta_uv1 = HMM_Vec2(xxx, yyy);
+     *  }
+     *
+     *  makes the model render with valid colors but the lighting is broken. Besides, I'm not sure what
+     *  values should I use. 1.0f and small number close to 0 (example 0.00001f) is still all black.
+     *  random values seem to look ok except lighting is all wrong... well, for now I won't change anything
+     *  it doesn't seem to affect any real models.
+     */
 
-    float f = 1.f / (delta_uv0.X * delta_uv1.Y - delta_uv1.X * delta_uv0.Y);
-    float x = f * (delta_uv1.Y * edge0.X - delta_uv0.Y * edge1.X);
-    float y = f * (delta_uv1.Y * edge0.Y - delta_uv0.Y * edge1.Y);
-    float z = f * (delta_uv1.Y * edge0.Z - delta_uv0.Y * edge1.Z);
+    const hmm_vec3 edge0 = HMM_SubtractVec3(v1pos, v0pos);
+    const hmm_vec3 edge1 = HMM_SubtractVec3(v2pos, v0pos);
+    const hmm_vec2 delta_uv0 = HMM_SubtractVec2(v1uv, v0uv);
+    const hmm_vec2 delta_uv1 = HMM_SubtractVec2(v2uv, v0uv);
+
+    const float f = 1.f / (delta_uv0.X * delta_uv1.Y - delta_uv1.X * delta_uv0.Y);
+    const float x = f * (delta_uv1.Y * edge0.X - delta_uv0.Y * edge1.X);
+    const float y = f * (delta_uv1.Y * edge0.Y - delta_uv0.Y * edge1.Y);
+    const float z = f * (delta_uv1.Y * edge0.Z - delta_uv0.Y * edge1.Z);
 
     return HMM_Vec3(x, y, z);
 }

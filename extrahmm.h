@@ -4,8 +4,8 @@
 #define hmm_quat hmm_quaternion
 
 hmm_mat4 calc_matrix(hmm_vec3 pos, hmm_vec4 rotation, hmm_vec3 scale);
-hmm_vec3 get_tangent(hmm_vec3 *v0pos, hmm_vec3 *v1pos, hmm_vec3 *v2pos,
-        hmm_vec2 *v0uv, hmm_vec2 *v1uv, hmm_vec2 *v2uv);
+hmm_vec3 get_tangent(const hmm_vec3 v0pos, const hmm_vec3 v1pos, const hmm_vec3 v2pos,
+        const hmm_vec2 v0uv, const hmm_vec2 v1uv, const hmm_vec2 v2uv);
 
 hmm_quat quat_calcw(hmm_quat q);
 hmm_quat quat_multvec(hmm_quat q, hmm_vec3 v);
