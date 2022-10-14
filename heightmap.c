@@ -19,11 +19,18 @@ static hmm_vec3 get_normal(uint16_t *gfx, int x, int y, int w, int h)
     const float hd = get_height(gfx[ ((y-1)*w) + x-0 ]);
     const float hu = get_height(gfx[ ((y+1)*w) + x-0 ]);
 
-    const hmm_vec3 v3 = {hl-hr, 2.0f, hd-hu};
+    const hmm_vec3 v3 = {{hl-hr, 2.0f, hd-hu}};
     return HMM_NormalizeVec3(v3);
 }
 
-static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, uint16_t *indices)
+struct vertex {
+    hmm_vec3 pos;
+    hmm_vec3 normal;
+    hmm_vec2 uv;
+    hmm_vec3 tangent;
+};
+
+static void generate_vbuf(float scale, uint16_t *gfx, int stride, struct vertex *verts, uint16_t *indices)
 {
     int vptr = 0;
     const float vsize = (float)(129 - 1);
@@ -40,23 +47,23 @@ static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, 
             const hmm_vec3 normal = get_normal(gfx, x+1, y+1, 131, 131);
 
             //vertices
-            verts[vptr * 11 + 0] = ((float)x / vsize) * offsetx;
-            verts[vptr * 11 + 1] = get_height(pixel);
-            verts[vptr * 11 + 2] = (float)y / vsize * offsety;
+            verts[vptr].pos.X = ((float)x / vsize) * offsetx;
+            verts[vptr].pos.Y = get_height(pixel);
+            verts[vptr].pos.Z = (float)y / vsize * offsety;
 
             //normals
-            verts[vptr * 11 + 3] = normal.X;
-            verts[vptr * 11 + 4] = normal.Y;
-            verts[vptr * 11 + 5] = normal.Z;
+            verts[vptr].normal.X = normal.X;
+            verts[vptr].normal.Y = normal.Y;
+            verts[vptr].normal.Z = normal.Z;
 
             //UVs
-            verts[vptr * 11 + 6] = ((float)x / vsize);
-            verts[vptr * 11 + 7] = ((float)y / vsize);
+            verts[vptr].uv.U = ((float)x / vsize);
+            verts[vptr].uv.V = ((float)y / vsize);
 
             //tangents
-            //verts[vptr * 11 +  8] = 0.0f;
-            //verts[vptr * 11 +  9] = 1.0f;
-            //verts[vptr * 11 + 10] = 0.0f;
+            //verts[vptr].tangent.X = 0.0f;
+            //verts[vptr].tangent.Y = 1.0f;
+            //verts[vptr].tangent.Z = 0.0f;
             vptr++;
         }
     }
@@ -85,25 +92,25 @@ static void generate_vbuf(float scale, uint16_t *gfx, int stride, float *verts, 
             const int i1 = indices[i+1];
             const int i2 = indices[i+2];
 
-            const hmm_vec3 *v0pos = (hmm_vec3 *)&verts[i0 * 11 + 0];
-            const hmm_vec3 *v1pos = (hmm_vec3 *)&verts[i1 * 11 + 0];
-            const hmm_vec3 *v2pos = (hmm_vec3 *)&verts[i2 * 11 + 0];
+            const hmm_vec3 *v0pos = &verts[i0].pos;
+            const hmm_vec3 *v1pos = &verts[i1].pos;
+            const hmm_vec3 *v2pos = &verts[i2].pos;
 
-            const hmm_vec2 *v0uv = (hmm_vec2 *)&verts[i0 * 11 + 6];
-            const hmm_vec2 *v1uv = (hmm_vec2 *)&verts[i1 * 11 + 6];
-            const hmm_vec2 *v2uv = (hmm_vec2 *)&verts[i2 * 11 + 6];
+            const hmm_vec2 *v0uv = &verts[i0].uv;
+            const hmm_vec2 *v1uv = &verts[i1].uv;
+            const hmm_vec2 *v2uv = &verts[i2].uv;
 
             const hmm_vec3 t0 = get_tangent(*v0pos, *v1pos, *v2pos, *v0uv, *v1uv, *v2uv);
 
-            verts[i0 * 11 +  8] = t0.X; verts[i0 * 11 +  9] = t0.Y; verts[i0 * 11 + 10] = t0.Z;
-            verts[i1 * 11 +  8] = t0.X; verts[i1 * 11 +  9] = t0.Y; verts[i1 * 11 + 10] = t0.Z;
-            verts[i2 * 11 +  8] = t0.X; verts[i2 * 11 +  9] = t0.Y; verts[i2 * 11 + 10] = t0.Z;
+            verts[i0].tangent.X = t0.X; verts[i0].tangent.Y = t0.Y; verts[i0].tangent.Z = t0.Z;
+            verts[i1].tangent.X = t0.X; verts[i1].tangent.Y = t0.Y; verts[i1].tangent.Z = t0.Z;
+            verts[i2].tangent.X = t0.X; verts[i2].tangent.Y = t0.Y; verts[i2].tangent.Z = t0.Z;
     }
 }
 
 static int load_map(const char *fn, int w, int h, struct worldmap *map) {
     const int maxsize = 131 * 131 * 2;
-    const int vbufsize = 129 * 129 * 11;
+    const int vbufsize = 129 * 129;
     const int ibufsize = 128 * 128 * 6;
 
     const int hbufsize = 131 * 131;
@@ -111,7 +118,7 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
 
     uint16_t *indices = malloc(ibufsize * w * h * sizeof(uint16_t));
     uint16_t *pixels = malloc(maxsize * w * h);
-    float *verts = malloc(vbufsize * w * h * sizeof(float));
+    struct vertex *verts = malloc(vbufsize * w * h * sizeof(*verts));
     char path[0x1000];
     struct file f;
     int stride = 131;
@@ -141,7 +148,7 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
         for (int x = 0; x < w; ++x) {
             int offset = ((y*w) + x);
             uint16_t *pptr = map->hmap[y][x];
-            float *vbuf = &verts[vbufsize * offset];
+            struct vertex *vbuf = &verts[vbufsize * offset];
             uint16_t *ibuf = &indices[ibufsize * offset];
 
             generate_vbuf(map->scale, pptr, stride, vbuf, ibuf);
@@ -155,7 +162,7 @@ static int load_map(const char *fn, int w, int h, struct worldmap *map) {
 
             map->vbuffers[idx] = sg_make_buffer(&(sg_buffer_desc) {
                 .data.ptr = &verts[vbufsize * offset],
-                .data.size = vbufsize * sizeof(float),
+                .data.size = vbufsize * sizeof(struct vertex),
                 .type = SG_BUFFERTYPE_VERTEXBUFFER,
                 .usage = SG_USAGE_IMMUTABLE,
             });
