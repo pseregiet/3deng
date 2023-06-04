@@ -4,9 +4,6 @@
 #include "hmm.h"
 #include "extrahmm.h"
 #include <stdio.h>
-#define fatalerror(...)\
-    printf(__VA_ARGS__);\
-    exit(-1)
 
 extern struct frameinfo fi;
 
@@ -145,9 +142,10 @@ void terrain_shadow_render(struct frameinfo *fi)
         for (int x = 0; x < fi->map.w; ++x) {
             sg_bindings bind = {
                 .vertex_buffers[0] = fi->map.vbuffers[i],
-                .index_buffer = fi->map.ibuffers[i++],
+                .index_buffer = fi->map.ibuffers[i],
             };
             sg_apply_bindings(&bind);
+            i++;
 
             vs_terrain_depth_t uni;
             uni.umodel = HMM_Translate(HMM_Vec3(fi->map.scale * x, 0.0f, fi->map.scale * y));
