@@ -112,7 +112,7 @@ struct frameinfo fi = {
         //.pos = cam.pos,
         //.dir = cam.front,
         .ambi = {0.0f, 0.0f, 0.0f},
-        .diff = {1.0f, 1.0f, 1.0f},
+        .diff = {1.0f, 0.0f, 0.0f},
         .spec = {1.0f, 1.0f, 1.0f},
         .atte = {1.0f, 0.09f, 0.032f},
         //.atte = {1.0f, 0.0014f, 0.000007f}
@@ -214,6 +214,8 @@ static void do_imgui_frame(int w, int h, double delta)
     igText("Light dir: %f, %f, %f", fi.dirlight.dir.X, fi.dirlight.dir.Y, fi.dirlight.dir.Z);
     igColorEdit3("directional light diffuse", fi.dirlight.diff.Elements, ImGuiColorEditFlags_DefaultOptions_);
     igColorEdit3("directional light ambient", fi.dirlight.ambi.Elements, ImGuiColorEditFlags_DefaultOptions_);
+    igColorEdit3("spot light diffuse", fi.spotlight.diff.Elements, ImGuiColorEditFlags_DefaultOptions_);
+    igColorEdit3("spot light ambient", fi.spotlight.ambi.Elements, ImGuiColorEditFlags_DefaultOptions_);
 
     if (igCheckbox("Light enable1", &fi.lightsenable[0]))
         fi.pointlight[0].pos = fi.cam.pos;
@@ -232,15 +234,24 @@ static void do_imgui_frame(int w, int h, double delta)
     static int la2;
     static int la3;
     static int la4;
+    static int spola;
+    static float las1;
+    static float las2;
     igSliderInt("Light 1 attenuation", &la1, 0, 11, 0, 0);
     igSliderInt("Light 2 attenuation", &la2, 0, 11, 0, 0);
     igSliderInt("Light 3 attenuation", &la3, 0, 11, 0, 0);
     igSliderInt("Light 4 attenuation", &la4, 0, 11, 0, 0);
+    igSliderInt("SpotLight attenuation", &spola, 0, 11, 0, 0);
+    igSliderFloat("spotlight cutoff1", &las1, 10.0f, 180.0f, 0, 0);
+    igSliderFloat("spotlight cutoff2", &las2, 10.0f, 180.0f, 0, 0);
 
     fi.pointlight[0].atte = light_attenuation[la1];
     fi.pointlight[1].atte = light_attenuation[la2];
     fi.pointlight[2].atte = light_attenuation[la3];
     fi.pointlight[3].atte = light_attenuation[la4];
+    fi.spotlight.atte = light_attenuation[spola];
+    fi.spotlight.cutoff = HMM_COSF(HMM_ToRadians(las1));
+    fi.spotlight.outcutoff = HMM_COSF(HMM_ToRadians(las2));
     }
 
     igCheckbox("Enable anims", &playanim);
@@ -401,8 +412,8 @@ static int imgdummy_init()
     imgdummy_norm = sg_make_image(&imgdesc);
 
     //TODO: move this somewhere sensible
-    fi.spotlight.cutoff = HMM_COSF(HMM_ToRadians(12.5f));
-    fi.spotlight.outcutoff = HMM_COSF(HMM_ToRadians(15.0f));
+    fi.spotlight.cutoff = HMM_COSF(HMM_ToRadians(22.5f));
+    fi.spotlight.outcutoff = HMM_COSF(HMM_ToRadians(25.0f));
 
     return 0;
 }
