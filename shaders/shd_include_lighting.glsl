@@ -63,6 +63,7 @@ struct lightdata_t {
     vec3 ambi;
     vec3 diff;
     vec3 spec;
+    vec3 dir;
 @end
 
 @block lighting_fs_pointlight_uniforms
@@ -70,6 +71,7 @@ struct lightdata_t {
     vec4 diff[NR_POINT_LIGHTS];
     vec4 spec[NR_POINT_LIGHTS];
     vec4 atte[NR_POINT_LIGHTS];
+    vec4 pos[NR_POINT_LIGHTS];
     float enabled;
 @end
 
@@ -80,12 +82,14 @@ struct lightdata_t {
     float outcutoff;
     vec3 diff;
     vec3 spec;
+    vec3 dir;
+    vec3 pos;
 @end
 
 @block lighting_functions
 dir_light_t get_directional_light() {
     return dir_light_t(
-        inter.tang_dirlight_dir,
+        udir_light.dir,
         udir_light.ambi,
         udir_light.diff,
         udir_light.spec
@@ -94,7 +98,7 @@ dir_light_t get_directional_light() {
 
 point_light_t get_point_light(const int i) {
     return point_light_t(
-        inter.tang_pntlight_pos[i].xyz,
+        upoint_lights.pos[i].xyz,
         upoint_lights.atte[i].x,
         upoint_lights.atte[i].y,
         upoint_lights.atte[i].z,
@@ -106,8 +110,8 @@ point_light_t get_point_light(const int i) {
 
 spot_light_t get_spot_light() {
     return spot_light_t(
-        inter.tang_sptlight_pos,
-        inter.tang_sptlight_dir,
+        uspot_light.pos,
+        uspot_light.dir,
         uspot_light.cutoff,
         uspot_light.outcutoff,
         uspot_light.atte.x,

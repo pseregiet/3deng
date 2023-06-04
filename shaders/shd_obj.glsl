@@ -3,61 +3,47 @@
 @ctype vec4 hmm_vec4
 @ctype mat4 hmm_mat4
 
-@include shd_include_lighting.glsl
+@include obj_shd_include_lighting.glsl
 #define NR_POINT_LIGHTS 4
 
 @vs vs_obj
 in vec3 apos;
 in vec3 anorm;
+in vec4 atang;
 in vec2 auv;
-in vec3 atang;
 
 out INTERFACE {
-@include_block lighting_tang_interface
+    vec4 tang;
     vec2 uv;
+    vec3 normal;
+    vec3 fragpos;
 } inter;
 
 uniform vs_obj_slow {
-    mat4 uvp;
-@include_block lighting_vs_uniforms
-};
+    mat4 vp;
+} uvs_slow;
 
 uniform vs_obj_fast {
-    mat4 umodel;
-};
+    mat4 model;
+} uvs_fast;
 
 void main() {
-
-    mat3 normalmat = transpose(inverse(mat3(umodel)));
-    
-    vec3 T = normalize(normalmat * atang);
-    vec3 N = normalize(normalmat * anorm);
-    T = normalize(T - dot(T, N) * N);
-    vec3 B = cross(N, T);
-
-    vec3 ssfragpos = vec3(umodel * vec4(apos, 1.0));
-    mat3 TBN = transpose(mat3(T,B,N));
-
-    inter.tang_fragpos       = TBN * ssfragpos;
-    inter.tang_viewpos       = TBN * uviewpos;
-    inter.tang_dirlight_dir  = TBN * udirlight_dir;
-    inter.tang_sptlight_dir  = TBN * usptlight_dir;
-    inter.tang_sptlight_pos  = TBN * usptlight_pos;
-    for (int i = 0; i < NR_POINT_LIGHTS; ++i) {
-        inter.tang_pntlight_pos[i] = vec4(TBN * vec3(upntlight_pos[i]), 0.0);
-    }
-
     inter.uv = auv;
+    inter.normal = anorm;
+    inter.tang = atang;
+    inter.fragpos = vec3(uvs_fast.model * vec4(apos, 1.0));
 
-    gl_Position = uvp * vec4(ssfragpos, 1.0);
+    gl_Position = uvs_slow.vp * vec4(inter.fragpos, 1.0);
 }
 @end
 
 @fs fs_obj
 #define NR_POINT_LIGHTS 4
 in INTERFACE {
-@include_block lighting_tang_interface
+    vec4 tang;
     vec2 uv;
+    vec3 normal;
+    vec3 fragpos;
 } inter;
 
 out vec4 frag;
@@ -66,18 +52,18 @@ uniform fs_obj_fast {
     float umatshine;
 };
 
-uniform fs_obj_dirlight {
-@include_block lighting_fs_dirlight_uniforms
-} udir_light;
-
-
 uniform fs_obj_pointlights {
-@include_block lighting_fs_pointlight_uniforms
+    @include_block lighting_fs_pointlight_uniforms
 } upoint_lights;
 
 uniform fs_obj_spotlight {
-@include_block lighting_fs_spotlight_uniforms
+    @include_block lighting_fs_spotlight_uniforms
 } uspot_light;
+
+uniform fs_obj_slow {
+    @include_block lighting_fs_dirlight_uniforms
+    vec3 viewpos;
+} ufs_slow;
 
 @include_block lighting_structures
 @include_block lighting_functions
@@ -90,15 +76,19 @@ void main() {
     vec3 pixspec = vec3(texture(imgspec, inter.uv).xyz);
     vec3 pixnorm = vec3(texture(imgnorm, inter.uv).xyz);
 
-    //properties
-    vec3 norm = normalize(pixnorm * 2.0 - 1.0);
-    vec3 viewdir = normalize(inter.tang_viewpos - inter.tang_fragpos);
+    vec3 vN = inter.normal;
+    vec3 vT = vec3(inter.tang);
+    vec3 vNt = normalize(pixnorm * 2.0 - 1.0);
+    vec3 vB = inter.tang.w * cross(vN, vT);
+    vec3 vNout = normalize( vNt.x * vT + vNt.y * vB + vNt.z * vN );
+
+    vec3 viewdir = normalize(ufs_slow.viewpos - inter.fragpos);
 
     lightdata_t lightdata = lightdata_t(
             pixdiff,
             pixspec,
-            norm,
-            inter.tang_fragpos,
+            vNout,
+            inter.fragpos,
             viewdir,
             umatshine
     );

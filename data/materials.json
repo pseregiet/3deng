@@ -21,17 +21,22 @@
         "mips": true
     },
     {
-        "name": "buildings/cottage",
-        "diff": ["buildings/cottage/diff.qoi"],
-        "norm": ["buildings/cottage/norm.qoi"],
+        "name": "pCube49",
+        "diff": ["pCube49/diff.qoi"],
+        "norm": ["pCube49/norm.qoi"],
         "shine": [32.0],
         "min": true,
         "mag": true,
         "mips": true
     },
     {
-        "name": "people/trump",
-        "diff": ["people/trump/diff.qoi"]
+        "name": "Corset_O",
+        "diff": ["pCube49/diff.qoi"],
+        "norm": ["pCube49/norm.qoi"],
+        "shine": [32.0],
+        "min": true,
+        "mag": true,
+        "mips": true
     },
     {
         "name": "terrain",

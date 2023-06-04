@@ -7,18 +7,15 @@
 
 #define OBJ_MAGIC (0x1234567)
 
+;
+#pragma pack(push, 1)
 struct vertex {
     hmm_vec3 pos;
     hmm_vec3 nor;
+    hmm_vec4 tan;
     hmm_vec2  uv;
-    hmm_vec3 tan;
 };
-
-struct invec {
-    hmm_vec3 pos;
-    hmm_vec3 nor;
-    hmm_vec2 uv;
-};
+#pragma pack(pop)
 
 inline static uintptr_t align8(uintptr_t addr)
 {
@@ -34,26 +31,6 @@ inline static uintptr_t align4(uintptr_t addr)
     if (rest)
         rest = 4 - rest;
     return rest;
-}
-
-static void calc_tangents(struct vertex *vbuf, uint16_t *ibuf, int indecount)
-{
-    for (int i = 0; i < indecount; i +=3) {
-        const uint16_t idx[3] = {ibuf[i+0], ibuf[i+1], ibuf[i+2]};
-        const hmm_vec3 v0 = vbuf[idx[0]].pos;
-        const hmm_vec3 v1 = vbuf[idx[1]].pos;
-        const hmm_vec3 v2 = vbuf[idx[2]].pos;
-
-        const hmm_vec2 uv0 = vbuf[idx[0]].uv;
-        const hmm_vec2 uv1 = vbuf[idx[1]].uv;
-        const hmm_vec2 uv2 = vbuf[idx[2]].uv;
-
-        const hmm_vec3 t0 = HMM_NormalizeVec3(
-                get_tangent(v0, v1, v2, uv0, uv1, uv2));
-        vbuf[idx[0]].tan = t0;
-        vbuf[idx[1]].tan = t0;
-        vbuf[idx[2]].tan = t0;
-    }
 }
 
 struct objheader {
@@ -73,7 +50,7 @@ int objmodel_open(const char *fn, struct obj_model *mdl)
 
     struct objheader header;
     if (f.usize < sizeof(header)) {
-        printf("%s obj model corrupted\n", fn);
+        printf("%s obj model corrupted 1\n", fn);
         closefile(&f);
         return -1;
     }
@@ -82,11 +59,15 @@ int objmodel_open(const char *fn, struct obj_model *mdl)
     header.matlen++;
     int expectedsize = sizeof(header) +
         (header.matlen + align4(header.matlen) +
-        (sizeof(struct invec) * header.vertcount) +
+        (sizeof(struct vertex) * header.vertcount) +
         (sizeof(uint16_t) * header.indecount));
 
     if (header.magic != OBJ_MAGIC || f.usize != expectedsize) {
-        printf("%s obj model corrupted\n", fn);
+        printf("%s obj model corrupted 2\n", fn);
+        printf("vert: %d, inde: %d\n", header.vertcount, header.indecount);
+        printf("vs: %d, is: %d\n", header.vertcount * sizeof(struct vertex),
+                header.indecount * sizeof(uint16_t));
+        printf("%d vs %d\n", f.usize, expectedsize);
         closefile(&f);
         return -1;
     }
@@ -121,22 +102,15 @@ int objmodel_open(const char *fn, struct obj_model *mdl)
     uint16_t *ibuf = malloc(ibufsize);
 
     const int voff = sizeof(header) + (header.matlen + align4(header.matlen));
-    const int ioff = voff + (sizeof(struct invec) * header.vertcount);
+    const int ioff = voff + (sizeof(struct vertex) * header.vertcount);
 
     struct invec *vsrc = (struct invec *)&f.udata[voff];
     uint16_t *isrc = (uint16_t *)&f.udata[ioff];
 
-    //TODO: right now im copying straight data to another buffer
-    //not sure if necessary. Might be good idea if I do multithread.
     memcpy(ibuf, isrc, ibufsize);
-    for (int i = 0; i < header.vertcount; ++i) {
-        struct invec *vi = &vsrc[i];
-        struct vertex *vo = &vbuf[i];
-        memcpy(vo, vi, sizeof(*vi));
-    }
+    memcpy(vbuf, vsrc, vbufsize);
 
     closefile(&f);
-    calc_tangents(vbuf, ibuf, header.indecount);
 
     mdl->vbuf = sg_make_buffer(&(sg_buffer_desc) {
         .data.size = vbufsize,
@@ -185,8 +159,8 @@ void objmodel_pipeline(struct pipelines *pipes)
             .attrs = {
                 [ATTR_vs_obj_apos]  = {.format = SG_VERTEXFORMAT_FLOAT3},
                 [ATTR_vs_obj_anorm] = {.format = SG_VERTEXFORMAT_FLOAT3},
+                [ATTR_vs_obj_atang] = {.format = SG_VERTEXFORMAT_FLOAT4},
                 [ATTR_vs_obj_auv]   = {.format = SG_VERTEXFORMAT_FLOAT2},
-                [ATTR_vs_obj_atang] = {.format = SG_VERTEXFORMAT_FLOAT3},
             },
         },
         .depth = {
@@ -204,7 +178,7 @@ void objmodel_shadow_pipeline(struct pipelines *pipes)
     pipes->objmodel_shadow = sg_make_pipeline(&(sg_pipeline_desc){
         .shader = pipes->objmodel_shadow_shd,
         .layout = {
-            .buffers[ATTR_vs_obj_depth_apos] = {.stride = 11 * sizeof(float) },
+            .buffers[ATTR_vs_obj_depth_apos] = {.stride = 12 * sizeof(float) },
             .attrs[ATTR_vs_obj_depth_apos] = {.format = SG_VERTEXFORMAT_FLOAT3},
         },
         .depth = {
@@ -230,7 +204,6 @@ static inline float bits2float(const bool *bits)
 
 inline static void objmodel_fraguniforms_fast(float shine)
 {
-
     fs_obj_fast_t fs_fast = {
         .umatshine = shine
     };
@@ -240,13 +213,6 @@ inline static void objmodel_fraguniforms_fast(float shine)
 
 void objmodel_fraguniforms_slow(struct frameinfo *fi)
 {
-    fs_obj_dirlight_t fs_dirlight = {
-        .ambi    =   fi->dirlight.ambi,
-        .diff    =   fi->dirlight.diff,
-        .spec    =   fi->dirlight.spec,
-    };
-    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_obj_dirlight, &SG_RANGE(fs_dirlight));
-
     fs_obj_pointlights_t fs_pointlights;
     fs_pointlights.enabled = bits2float((bool *)&fi->lightsenable);
     for (int i = 0; i < 4; ++i) {
@@ -254,6 +220,7 @@ void objmodel_fraguniforms_slow(struct frameinfo *fi)
         fs_pointlights.diff[i] =    HMM_Vec4v(fi->pointlight[i].diff, 0.0f);
         fs_pointlights.spec[i] =    HMM_Vec4v(fi->pointlight[i].spec, 0.0f);
         fs_pointlights.atte[i] =    HMM_Vec4v(fi->pointlight[i].atte, 0.0f);
+        fs_pointlights.pos [i] =    HMM_Vec4v(fi->pointlight[i].pos,  0.0f);
     }
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_obj_pointlights, &SG_RANGE(fs_pointlights));
 
@@ -264,36 +231,40 @@ void objmodel_fraguniforms_slow(struct frameinfo *fi)
         .ambi =         fi->spotlight.ambi,
         .diff =         fi->spotlight.diff,
         .spec =         fi->spotlight.spec,
+        .pos  =         fi->cam.pos,
+        .dir  =         fi->cam.front,
     };
     sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_obj_spotlight, &SG_RANGE(fs_spotlight));
+
+    fs_obj_slow_t fs = {
+        .light_ambi    =   fi->dirlight.ambi,
+        .light_diff    =   fi->dirlight.diff,
+        .light_spec    =   fi->dirlight.spec,
+        .light_dir     =   fi->dirlight.dir,
+        .viewpos = fi->cam.pos,
+    };
+    sg_apply_uniforms(SG_SHADERSTAGE_FS, SLOT_fs_obj_slow, &SG_RANGE(fs));
 }
 
 void objmodel_vertuniforms_slow(struct frameinfo *fi)
 {
     vs_obj_slow_t vs = {
-        .uvp           = fi->vp,
-        .uviewpos      = fi->cam.pos,
-        .usptlight_pos = fi->cam.pos,
-        .usptlight_dir = fi->cam.front,
-        .udirlight_dir = fi->dirlight.dir,
+        .vp = fi->vp,
     };
-    for (int i = 0; i < 4; ++i)
-        vs.upntlight_pos[i] = HMM_Vec4v(fi->pointlight[i].pos, 0.0f);
-
     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_obj_slow, &SG_RANGE(vs));
 }
 
-inline static void objmodel_vertuniforms_fast(hmm_mat4 model)
+inline static void objmodel_vertuniforms_fast(struct frameinfo *fi, hmm_mat4 model)
 {
     vs_obj_fast_t vs = {
-        .umodel = model
+        .model = model,
     };
     sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_obj_fast, &SG_RANGE(vs));
 }
 
 void objmodel_render(const struct obj_model *mdl, struct frameinfo *fi, hmm_mat4 model)
 {
-    objmodel_vertuniforms_fast(model);
+    objmodel_vertuniforms_fast(fi, model);
     objmodel_fraguniforms_fast(mdl->material.shine.value);
 
     sg_bindings bind = {
