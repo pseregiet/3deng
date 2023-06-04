@@ -14,6 +14,7 @@ enum keys {
     KEYS,
     KEYA,
     KEYD,
+    LSHIFT,
     KEY_COUNT,
 };
 
@@ -24,7 +25,12 @@ char keymap[KEY_COUNT] = {0};
 
 void move_camera(double delta)
 {
-    float camspeed = 0.5f * delta;
+    float camspeed = delta;
+    if (keymap[LSHIFT])
+        camspeed *= 0.5;
+    else
+        camspeed *= 0.1;
+
     hmm_vec3 off;
     if (keymap[KEYW]) {
         off = HMM_MultiplyVec3f(fi.cam.front, camspeed);
@@ -114,6 +120,8 @@ void do_input(double delta)
                 keymap[KEYA] = val;
             else if (e.key.keysym.sym == SDLK_d)
                 keymap[KEYD] = val;
+            else if (e.key.keysym.sym == SDLK_LSHIFT)
+                keymap[LSHIFT] = val;
         }
 
         else if (e.type == SDL_MOUSEMOTION) {
